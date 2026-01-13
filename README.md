@@ -1,36 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# INCP Platform - Plateforme de Conformité DUERP
 
-## Getting Started
+Plateforme SaaS pour la conformité DUERP des TPE en France.
 
-First, run the development server:
+## 🚀 Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🗄️ Base de données
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Avec Docker (recommandé)
+```bash
+# Lancer PostgreSQL
+docker run --name incp-postgres \
+  -e POSTGRES_USER=incp \
+  -e POSTGRES_PASSWORD=secret123 \
+  -e POSTGRES_DB=incp_platform \
+  -p 5432:5432 \
+  -d postgres:16
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Initialiser Prisma
+npm run db:push
+npm run db:generate
+```
 
-## Learn More
+## 💻 Développement
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Lancer le serveur
+npm run dev
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Ouvrir http://localhost:3000
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🎨 Intégration Figma
 
-## Deploy on Vercel
+### Workflow
+1. Designer crée composants sur Figma
+2. Export avec Anima/Locofy OU copie manuelle
+3. Intégration dans `src/components/`
+4. Utiliser shadcn/ui comme base
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Conventions de nommage
+- Composants: `PascalCase.tsx`
+- Props: interface `ComponentProps`
+- Variants: avec `cva()` de class-variance-authority
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Exemple
+```tsx
+// Figma: "Button/Primary/Large"
+// Code: src/components/ui/button.tsx (déjà fourni par shadcn)
+<Button variant="default" size="lg">Cliquez ici</Button>
+```
+
+## 📁 Structure
+
+```
+src/
+├── app/              # Routes (App Router)
+├── components/       # Composants React
+│   ├── ui/          # Design system (shadcn)
+│   ├── layout/      # Layout (navbar, footer)
+│   ├── auth/        # Auth components
+│   ├── dashboard/   # Dashboard components
+│   ├── duerp/       # DUERP wizard
+│   └── admin/       # Admin components
+├── lib/             # Utilitaires
+├── server/          # Server actions & services
+├── types/           # Types TypeScript
+└── config/          # Configuration
+```
+
+## 🛠️ Scripts disponibles
+
+```bash
+npm run dev          # Démarrer le serveur de développement
+npm run build        # Build pour production
+npm run start        # Démarrer le serveur de production
+npm run lint         # Linter le code
+npm run format       # Formater le code avec Prettier
+npm run type-check   # Vérifier les types TypeScript
+npm run db:generate  # Générer le client Prisma
+npm run db:push      # Pousser le schéma vers la DB
+npm run db:migrate   # Créer une migration
+npm run db:studio    # Ouvrir Prisma Studio
+```
+
+## 📚 Stack Technique
+
+- **Framework**: Next.js 14 (App Router) + TypeScript
+- **Styling**: Tailwind CSS v4 + shadcn/ui
+- **Database**: PostgreSQL + Prisma ORM
+- **Auth**: NextAuth.js v5
+- **Payment**: Stripe
+- **PDF**: @react-pdf/renderer
+- **Forms**: React Hook Form + Zod
+- **State**: Zustand
+
+## ✅ Checklist avant développement
+
+- [ ] PostgreSQL en cours d'exécution
+- [ ] `.env.local` configuré
+- [ ] `npm run dev` fonctionne
+- [ ] `npm run type-check` sans erreur
+- [ ] shadcn/ui composants installés
+
+## 🔐 Variables d'environnement
+
+Copier `.env.example` vers `.env.local` et remplir les valeurs.
+
+## 📖 Documentation
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Prisma Documentation](https://www.prisma.io/docs)
+- [shadcn/ui Documentation](https://ui.shadcn.com)
