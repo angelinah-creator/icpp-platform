@@ -1,0 +1,490 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTHENTICATION & USERS
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String
+  password      String?   // Nullable pour OAuth
+  role          String    @default("CLIENT") // CLIENT, ADMIN, AUDITOR, COMMERCIAL
+  image         String?
+  phone         String?
+  
+  // Relations
+  companyId     String?
+  company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  
+  accounts      Account[]
+  sessions      Session[]
+  
+  // Audit
+  duerpsSigned  DuerpDocument[] @relation("SignedBy")
+  auditLogs     AuditLog[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+  @@index([companyId])
+  @@map("users")
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? 
+  access_token      String? 
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? 
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// MÉTIERS & ACTIVITÉS (ICPP)
+// ============================================
+
+model MetierICPP {
+  id          String   @id @default(cuid())
+  code        String   @unique // COIFFURE, RESTAURATION, etc.
+  nom         String
+  description String
+  isActive    Boolean  @default(true)
+  
+  // Relations
+  companies   Company[]
+  risques     RisqueMetier[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("metiers_icpp")
+}
+
+// ============================================
+// COMPANY & BUSINESS
+// ============================================
+
+model Company {
+  id              String   @id @default(cuid())
+  name            String
+  siret           String?  @unique
+  
+  // Métier ICPP
+  metierCode      String?
+  metier          MetierICPP? @relation(fields: [metierCode], references: [code])
+  
+  employeeCount   Int      @default(1)
+  
+  // Contact
+  address         String
+  postalCode      String?
+  city            String
+  phone           String?
+  email           String?
+  
+  // Business hours
+  openingHours    String?  // JSON string
+  
+  // Relations
+  users           User[]
+  duerps          DuerpDocument[]
+  subscription    Subscription?
+  affichages      Affichage[]
+  contrats        Contrat[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([siret])
+  @@index([metierCode])
+  @@map("companies")
+}
+
+// ============================================
+// RISQUES (Structure Relationnelle ICPP)
+// ============================================
+
+model RisqueCategorie {
+  id          String   @id @default(cuid())
+  code        String   @unique // PHYSIQUE, CHIMIQUE, etc.
+  nom         String
+  description String?
+  ordre       Int      @default(0)
+  
+  risques     RisqueMetier[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("risques_categories")
+}
+
+model RisqueMetier {
+  id              String   @id @default(cuid())
+  
+  // Catégorie
+  categorieCode   String
+  categorie       RisqueCategorie @relation(fields: [categorieCode], references: [code])
+  
+  // Métier concerné
+  metierCode      String
+  metier          MetierICPP @relation(fields: [metierCode], references: [code])
+  
+  // Contenu
+  nom             String
+  description     String
+  gravite         String   // FAIBLE, MOYEN, ELEVE
+  frequence       Int      @default(1) // 1-5
+  
+  // Mesures préventives suggérées (JSON array)
+  mesuresSuggerees String
+  
+  isActive        Boolean  @default(true)
+  
+  // Relations
+  evaluations     EvaluationRisque[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([categorieCode])
+  @@index([metierCode])
+  @@map("risques_metier")
+}
+
+// ============================================
+// DUERP & ÉVALUATION
+// ============================================
+
+model DuerpDocument {
+  id                  String       @id @default(cuid())
+  version             Int          @default(1)
+  status              String       @default("DRAFT") // DRAFT, ACTIVE, ARCHIVED
+  
+  // Company
+  companyId           String
+  company             Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Évaluations de risques
+  evaluations         EvaluationRisque[]
+  
+  // Signature
+  signedAt            DateTime?
+  signedBy            String?      // User ID
+  signer              User?        @relation("SignedBy", fields: [signedBy], references: [id], onDelete: SetNull)
+  signatureData       String?      // JSON with IP, timestamp, etc.
+  
+  // PDF
+  pdfUrl              String?
+  pdfGeneratedAt      DateTime?
+  
+  // Metadata
+  lastUpdateReason    String?
+  nextReviewDate      DateTime?
+  
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+  @@map("duerp_documents")
+}
+
+model EvaluationRisque {
+  id                  String   @id @default(cuid())
+  
+  // DUERP
+  duerpId             String
+  duerp               DuerpDocument @relation(fields: [duerpId], references: [id], onDelete: Cascade)
+  
+  // Risque évalué
+  risqueId            String
+  risque              RisqueMetier @relation(fields: [risqueId], references: [id])
+  
+  // Unité de travail / Poste concerné
+  uniteTravail        String   // Ex: "Cuisine", "Salle"
+  
+  // Évaluation FxG
+  frequence           Int      // 1-5
+  gravite             Int      // 1-5
+  niveauRisque        Int      // F x G
+  
+  // Mesures de prévention appliquées
+  mesuresAppliquees   String   // JSON array
+  
+  // Observations
+  observations        String?
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([duerpId])
+  @@index([risqueId])
+  @@map("evaluations_risques")
+}
+
+// ============================================
+// PLANS TARIFAIRES & ABONNEMENTS
+// ============================================
+
+model PlanTarifaire {
+  id              String   @id @default(cuid())
+  code            String   @unique // ESSENTIEL, PRO, PREMIUM
+  nom             String
+  description     String
+  prixMensuel     Int      // En centimes
+  fraisSetup      Int      @default(0) // Frais de mise en place
+  
+  // Fonctionnalités (JSON)
+  fonctionnalites String
+  
+  isActive        Boolean  @default(true)
+  ordre           Int      @default(0)
+  
+  subscriptions   Subscription[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("plans_tarifaires")
+}
+
+model Subscription {
+  id                    String              @id @default(cuid())
+  
+  // Company
+  companyId             String              @unique
+  company               Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Plan
+  planCode              String
+  plan                  PlanTarifaire       @relation(fields: [planCode], references: [code])
+  status                String              @default("ACTIVE") // ACTIVE, CANCELED, PAST_DUE, TRIALING, SUSPENDED
+  
+  // Stripe
+  stripeCustomerId      String?             @unique
+  stripeSubscriptionId  String?             @unique
+  stripePriceId         String?
+  
+  // Billing
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  cancelAtPeriodEnd     Boolean             @default(false)
+  canceledAt            DateTime?
+  
+  // Trial & Promo
+  trialStart            DateTime?
+  trialEnd              DateTime?
+  promoCode             String?
+  
+  // Frais de setup payé
+  setupFeePaid          Boolean             @default(false)
+  setupFeePaidAt        DateTime?
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+  @@index([planCode])
+  @@map("subscriptions")
+}
+
+// ============================================
+// CONTRATS & CGV
+// ============================================
+
+model CGVVersion {
+  id              String   @id @default(cuid())
+  version         String   @unique // "1.0", "1.1", etc.
+  contenu         String   // Texte complet ou URL
+  datePublication DateTime
+  isActive        Boolean  @default(true)
+  
+  acceptations    CGVAcceptation[]
+  contrats        Contrat[]
+  
+  createdAt       DateTime @default(now())
+
+  @@map("cgv_versions")
+}
+
+model CGVAcceptation {
+  id              String   @id @default(cuid())
+  
+  // User
+  userId          String
+  
+  // CGV
+  cgvVersion      String
+  cgv             CGVVersion @relation(fields: [cgvVersion], references: [version])
+  
+  // Preuve
+  acceptedAt      DateTime @default(now())
+  ipAddress       String
+  userAgent       String?
+  
+  @@index([userId])
+  @@index([cgvVersion])
+  @@map("cgv_acceptations")
+}
+
+model Contrat {
+  id                String   @id @default(cuid())
+  numeroContrat     String   @unique
+  
+  // Company
+  companyId         String
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // CGV
+  cgvVersion        String
+  cgv               CGVVersion @relation(fields: [cgvVersion], references: [version])
+  
+  // Dates
+  dateDebut         DateTime
+  dateFin           DateTime?
+  
+  // Signature
+  signedAt          DateTime?
+  signatureData     String?  // JSON with IP, timestamp
+  
+  // PDF
+  pdfUrl            String?
+  pdfGeneratedAt    DateTime?
+  
+  status            String   @default("ACTIF") // ACTIF, RESILIE, SUSPENDU
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+  @@map("contrats")
+}
+
+// ============================================
+// AFFICHAGES OBLIGATOIRES
+// ============================================
+
+model Affichage {
+  id          String        @id @default(cuid())
+  type        String        // INSPECTION_TRAVAIL, MEDECINE_TRAVAIL, etc.
+  title       String
+  description String?       
+  
+  // Company
+  companyId   String
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // File
+  fileUrl     String?
+  
+  // Status
+  downloaded  Boolean       @default(false)
+  printed     Boolean       @default(false)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([companyId])
+  @@map("affichages")
+}
+
+// ============================================
+// NOTIFICATIONS & REMINDERS
+// ============================================
+
+model Notification {
+  id        String            @id @default(cuid())
+  type      String            // DUERP_ANNUAL_REMINDER, etc.
+  title     String
+  message   String            
+  
+  // Target
+  userId    String?
+  
+  // Status
+  read      Boolean           @default(false)
+  readAt    DateTime?
+  
+  // Action
+  actionUrl String?
+  
+  createdAt DateTime          @default(now())
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      String      // USER_LOGIN, DUERP_CREATED, etc.
+  description String?     
+  
+  // User
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Metadata
+  metadata    String?     // JSON
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime    @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
