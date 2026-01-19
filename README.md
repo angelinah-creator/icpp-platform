@@ -1,117 +1,85 @@
-# INCP Platform - Plateforme de Conformité DUERP
+# ICPP Platform - SaaS de Conformité Professionnelle
 
-Plateforme SaaS pour la conformité DUERP des TPE en France.
+Plateforme SaaS complète dédiée à la gestion de la conformité (DUERP), aux audits de risques professionnels et au suivi réglementaire pour les TPE/PME.
 
-## 🚀 Installation
+> **Note**: Ce projet suit les spécifications du cahier des charges "SAAS ICPP CONFORMITÉ" (Janvier 2026).
 
+## 🚀 Fonctionnalités Clés
+
+*   **Audits Métiers** : Formulaires intelligents adaptés à 10 secteurs d'activité (Coiffure, Restauration, BTP...).
+*   **Génération DUERP** : CRÉATION AUTOMATIQUE du Document Unique en PDF (conforme Code du Travail).
+*   **Espace Client** : Portail dédié pour la gestion des documents, affichages obligatoires et mises à jour.
+*   **Administratif** : Gestion des contrats, signatures électroniques (eIDAS) et abonnements Stripe.
+*   **Statistiques** : Module Data pour le reporting institutionnel (DEETS, Médecine du travail).
+
+## 🛠 Stack Technique
+
+*   **Framework** : [Next.js 14](https://nextjs.org/) (App Router)
+*   **Langage** : TypeScript
+*   **Base de Données** : PostgreSQL / SQLite (via [Prisma ORM](https://www.prisma.io/))
+*   **Auth** : NextAuth.js v5
+*   **Styling** : Tailwind CSS v4 + [shadcn/ui](https://ui.shadcn.com/)
+*   **Paiement** : Stripe
+*   **PDF** : @react-pdf/renderer
+
+## ⚡ Installation & Démarrage
+
+### Pré-requis
+*   Node.js 18+
+*   NPM ou PNPM
+
+### 1. Cloner le projet
+```bash
+git clone https://github.com/angelinah-creator/icpp-platform.git
+cd icpp-platform
+```
+
+### 2. Installer les dépendances
 ```bash
 npm install
 ```
 
-## 🗄️ Base de données
-
-### Avec Docker (recommandé)
+### 3. Configuration de l'environnement
+Copiez le fichier d'exemple et remplissez les secrets :
 ```bash
-# Lancer PostgreSQL
-docker run --name incp-postgres \
-  -e POSTGRES_USER=incp \
-  -e POSTGRES_PASSWORD=secret123 \
-  -e POSTGRES_DB=incp_platform \
-  -p 5432:5432 \
-  -d postgres:16
+cp .env.example .env.local
+```
+*(Demander les clés API Stripe et NextAuth secret à l'administrateur)*
 
-# Initialiser Prisma
-npm run db:push
+### 4. Base de Données (Initialisation)
+Nous utilisons Prisma. Pour lancer la BDD locale (SQLite) et injecter les **10 métiers et risques de base** :
+```bash
+# Générer le client Prisma
 npm run db:generate
+
+# Pousser le schéma
+npm run db:push
+
+# Peupler la base (Seed : Métiers, Risques, Plans, CGV...)
+npm run db:seed
 ```
 
-## 💻 Développement
-
+### 5. Lancer le serveur de dev
 ```bash
-# Lancer le serveur
 npm run dev
-
-# Ouvrir http://localhost:3000
 ```
+Ouvrir [http://localhost:3000](http://localhost:3000)
 
-## 🎨 Intégration Figma
+## 📂 Structure du projet
 
-### Workflow
-1. Designer crée composants sur Figma
-2. Export avec Anima/Locofy OU copie manuelle
-3. Intégration dans `src/components/`
-4. Utiliser shadcn/ui comme base
+Les dossiers principaux à connaître pour contribuer :
 
-### Conventions de nommage
-- Composants: `PascalCase.tsx`
-- Props: interface `ComponentProps`
-- Variants: avec `cva()` de class-variance-authority
+*   `src/app` : Routing et Pages (Next.js App Router).
+*   `src/components` : Composants React (UI = générique, DUERP/Dashboard = métier).
+*   `prisma/schema.prisma` : Définition des modèles de données (Source de vérité).
+*   `prisma/seed.ts` : Script d'injection des données métiers (Risques, Catégories).
 
-### Exemple
-```tsx
-// Figma: "Button/Primary/Large"
-// Code: src/components/ui/button.tsx (déjà fourni par shadcn)
-<Button variant="default" size="lg">Cliquez ici</Button>
-```
+## 🤝 Contribution
 
-## 📁 Structure
+1.  Ne jamais commit sur `main` directement.
+2.  Créer une branche pour chaque feature : `git checkout -b feat/nom-de-la-feature`.
+3.  Respecter le typage TypeScript strict.
+4.  Lancer `npm run format` avant de push.
 
-```
-src/
-├── app/              # Routes (App Router)
-├── components/       # Composants React
-│   ├── ui/          # Design system (shadcn)
-│   ├── layout/      # Layout (navbar, footer)
-│   ├── auth/        # Auth components
-│   ├── dashboard/   # Dashboard components
-│   ├── duerp/       # DUERP wizard
-│   └── admin/       # Admin components
-├── lib/             # Utilitaires
-├── server/          # Server actions & services
-├── types/           # Types TypeScript
-└── config/          # Configuration
-```
-
-## 🛠️ Scripts disponibles
-
-```bash
-npm run dev          # Démarrer le serveur de développement
-npm run build        # Build pour production
-npm run start        # Démarrer le serveur de production
-npm run lint         # Linter le code
-npm run format       # Formater le code avec Prettier
-npm run type-check   # Vérifier les types TypeScript
-npm run db:generate  # Générer le client Prisma
-npm run db:push      # Pousser le schéma vers la DB
-npm run db:migrate   # Créer une migration
-npm run db:studio    # Ouvrir Prisma Studio
-```
-
-## 📚 Stack Technique
-
-- **Framework**: Next.js 14 (App Router) + TypeScript
-- **Styling**: Tailwind CSS v4 + shadcn/ui
-- **Database**: PostgreSQL + Prisma ORM
-- **Auth**: NextAuth.js v5
-- **Payment**: Stripe
-- **PDF**: @react-pdf/renderer
-- **Forms**: React Hook Form + Zod
-- **State**: Zustand
-
-## ✅ Checklist avant développement
-
-- [ ] PostgreSQL en cours d'exécution
-- [ ] `.env.local` configuré
-- [ ] `npm run dev` fonctionne
-- [ ] `npm run type-check` sans erreur
-- [ ] shadcn/ui composants installés
-
-## 🔐 Variables d'environnement
-
-Copier `.env.example` vers `.env.local` et remplir les valeurs.
-
-## 📖 Documentation
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Prisma Documentation](https://www.prisma.io/docs)
-- [shadcn/ui Documentation](https://ui.shadcn.com)
+---
+*ICPP Platform 2026 - Tous droits réservés.*
