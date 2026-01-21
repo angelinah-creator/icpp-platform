@@ -5,12 +5,10 @@ import { loginAction } from "@/server/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 
 export default function LoginPage() {
-    const [activeTab, setActiveTab] = useState("client")
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
 
@@ -44,14 +42,7 @@ export default function LoginPage() {
                         </p>
                     </div>
 
-                    {/* Tabs */}
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="client">Espace Client</TabsTrigger>
-                            <TabsTrigger value="auditor">Auditeur</TabsTrigger>
-                            <TabsTrigger value="admin">Administrateur</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
+                    {/* Tabs removed - can be re-enabled if client validates */}
 
                     {/* Login Form */}
                     <form action={handleSubmit} className="space-y-6">

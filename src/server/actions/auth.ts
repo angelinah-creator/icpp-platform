@@ -5,6 +5,7 @@ import { AuthError } from "next-auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
+import { redirect } from "next/navigation"
 
 // Validation schemas
 const loginSchema = z.object({
@@ -34,13 +35,29 @@ export async function loginAction(formData: FormData) {
     }
 
     try {
-        await signIn("credentials", {
+        // Sign in without automatic redirect
+        const result = await signIn("credentials", {
             email,
             password,
-            redirectTo: "/dashboard",
+            redirect: false,
         })
 
-        return { success: true }
+        if (result?.error) {
+            return { error: "Email ou mot de passe incorrect" }
+        }
+
+        // Get user from database to determine role
+        const user = await prisma.user.findUnique({
+            where: { email },
+            select: { role: true },
+        })
+
+        // Redirect based on role
+        if (user?.role === "ADMIN" || user?.role === "AUDITOR" || user?.role === "COMMERCIAL") {
+            redirect("/admin")
+        } else {
+            redirect("/dashboard")
+        }
     } catch (error) {
         if (error instanceof AuthError) {
             switch (error.type) {
