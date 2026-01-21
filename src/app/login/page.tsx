@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CheckCircle2 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function LoginPage() {
     const [error, setError] = useState<string | null>(null)
@@ -31,7 +32,13 @@ export default function LoginPage() {
                 <div className="mx-auto w-full max-w-md">
                     {/* Logo */}
                     <div className="mb-8">
-                        <h1 className="text-2xl font-bold text-blue-600">ICPP</h1>
+                        <Image
+                            src="/logo-icpp.png"
+                            alt="ICPP"
+                            width={120}
+                            height={40}
+                            priority
+                        />
                     </div>
 
                     {/* Welcome Message */}
