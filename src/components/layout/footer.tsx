@@ -10,7 +10,7 @@ export function Footer() {
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
                     {/* Company */}
                     <div>
-                        <h3 className="mb-4 text-sm font-semibold">INCP Platform</h3>
+                        <h3 className="mb-4 text-sm font-semibold">ICPP Platform</h3>
                         <p className="text-sm text-gray-600">
                             Conformité DUERP simplifiée pour les TPE
                         </p>
@@ -59,14 +59,14 @@ export function Footer() {
                     <div>
                         <h3 className="mb-4 text-sm font-semibold">Contact</h3>
                         <ul className="space-y-2 text-sm text-gray-600">
-                            <li>contact@incp-platform.fr</li>
+                            <li>contact@icpp-platform.fr</li>
                             <li>+33 1 23 45 67 89</li>
                         </ul>
                     </div>
                 </div>
 
                 <div className="mt-8 border-t pt-8 text-center text-sm text-gray-600">
-                    © {new Date().getFullYear()} INCP Platform. Tous droits réservés.
+                    © {new Date().getFullYear()} ICPP Platform. Tous droits réservés.
                 </div>
             </div>
         </footer>
