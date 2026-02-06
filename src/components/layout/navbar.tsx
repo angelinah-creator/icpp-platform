@@ -12,7 +12,7 @@ export function Navbar() {
                 {/* Logo */}
                 <Link href="/" className="flex items-center space-x-2">
                     <div className="h-8 w-8 rounded-md bg-primary" />
-                    <span className="text-xl font-bold">INCP</span>
+                    <span className="text-xl font-bold">ICPP</span>
                 </Link>
 
                 {/* Navigation Links */}

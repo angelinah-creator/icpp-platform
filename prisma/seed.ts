@@ -1,465 +1,203 @@
+/**
+ * Prisma Seed Script
+ * Seeds the database with initial data for the ICPP platform
+ * Note: For complete seed including UTs and Risques, use: npx prisma db execute --file .\prisma\seed-complete.sql
+ */
+
 import { PrismaClient } from "@prisma/client"
-import bcrypt from "bcryptjs"
 
 const prisma = new PrismaClient()
 
 async function main() {
-    console.log("🌱 Starting ICPP Platform seed...")
-
-    // Clean database (development only)
-    console.log("🧹 Cleaning database...")
-    await prisma.auditLog.deleteMany()
-    await prisma.notification.deleteMany()
-    await prisma.affichage.deleteMany()
-    await prisma.cGVAcceptation.deleteMany()
-    await prisma.evaluationRisque.deleteMany()
-    await prisma.duerpDocument.deleteMany()
-    await prisma.contrat.deleteMany()
-    await prisma.subscription.deleteMany()
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.company.deleteMany()
-    await prisma.risqueMetier.deleteMany()
-    await prisma.risqueCategorie.deleteMany()
-    await prisma.metierICPP.deleteMany()
-    await prisma.planTarifaire.deleteMany()
-    await prisma.cGVVersion.deleteMany()
-
-    console.log("✅ Database cleaned")
+    console.log("🌱 Starting database seed...")
 
     // ============================================
-    // 1. MÉTIERS ICPP
+    // 1. METIERS ICPP
     // ============================================
 
-    console.log("📋 Creating Métiers ICPP...")
+    console.log("🏢 Creating Métiers ICPP...")
 
     const metiers = await Promise.all([
-        prisma.metierICPP.create({
-            data: {
-                code: "COIFFURE",
-                nom: "Salon de Coiffure",
-                description: "Activités de coiffure, soins capillaires et esthétique"
-            }
+        prisma.metierICPP.upsert({
+            where: { code: "COIFFURE" },
+            update: {},
+            create: { code: "COIFFURE", nom: "Salon de Coiffure", description: "Coiffure, barbier" }
         }),
-        prisma.metierICPP.create({
-            data: {
-                code: "RESTAURATION",
-                nom: "Restauration",
-                description: "Services de restauration rapide ou traditionnelle"
-            }
+        prisma.metierICPP.upsert({
+            where: { code: "ESTHETIQUE" },
+            update: {},
+            create: { code: "ESTHETIQUE", nom: "Institut de Beauté", description: "Esthétique, onglerie, bien-être" }
         }),
-        prisma.metierICPP.create({
-            data: {
-                code: "BOULANGERIE",
-                nom: "Boulangerie-Pâtisserie",
-                description: "Fabrication et vente de produits de boulangerie"
-            }
+        prisma.metierICPP.upsert({
+            where: { code: "RESTAURATION" },
+            update: {},
+            create: { code: "RESTAURATION", nom: "Restauration", description: "Restaurant, snack, restauration rapide" }
         }),
-        prisma.metierICPP.create({
-            data: {
-                code: "COMMERCE",
-                nom: "Commerce de Détail",
-                description: "Vente au détail de marchandises diverses"
-            }
+        prisma.metierICPP.upsert({
+            where: { code: "BOULANGERIE" },
+            update: {},
+            create: { code: "BOULANGERIE", nom: "Boulangerie-Pâtisserie", description: "Fabrication et vente de pain" }
         }),
-        prisma.metierICPP.create({
-            data: {
-                code: "ESTHETIQUE",
-                nom: "Institut de Beauté",
-                description: "Soins esthétiques et bien-être"
-            }
+        prisma.metierICPP.upsert({
+            where: { code: "COMMERCE" },
+            update: {},
+            create: { code: "COMMERCE", nom: "Commerce de Détail", description: "Boutique, prêt-à-porter" }
         }),
-        prisma.metierICPP.create({
-            data: {
-                code: "GARAGE",
-                nom: "Garage Automobile",
-                description: "Réparation et entretien de véhicules"
-            }
+        prisma.metierICPP.upsert({
+            where: { code: "GARAGE" },
+            update: {},
+            create: { code: "GARAGE", nom: "Garage Automobile", description: "Mécanique, carrosserie" }
         }),
-        prisma.metierICPP.create({
-            data: {
-                code: "BATIMENT",
-                nom: "Bâtiment et Travaux Publics",
-                description: "Construction, rénovation et travaux publics"
-            }
+        prisma.metierICPP.upsert({
+            where: { code: "NETTOYAGE" },
+            update: {},
+            create: { code: "NETTOYAGE", nom: "Services de Nettoyage", description: "Nettoyage, entretien" }
         }),
-        prisma.metierICPP.create({
-            data: {
-                code: "NETTOYAGE",
-                nom: "Services de Nettoyage",
-                description: "Nettoyage de locaux professionnels et particuliers"
-            }
+        prisma.metierICPP.upsert({
+            where: { code: "BUREAU" },
+            update: {},
+            create: { code: "BUREAU", nom: "Activités de Bureau", description: "Bureaux, administratif" }
         }),
-        prisma.metierICPP.create({
-            data: {
-                code: "HOTELLERIE",
-                nom: "Hôtellerie",
-                description: "Hébergement et services hôteliers"
-            }
+        prisma.metierICPP.upsert({
+            where: { code: "BATIMENT" },
+            update: {},
+            create: { code: "BATIMENT", nom: "Bâtiment et Travaux Publics", description: "Construction, rénovation" }
         }),
-        prisma.metierICPP.create({
-            data: {
-                code: "BUREAU",
-                nom: "Activités de Bureau",
-                description: "Travail administratif et tertiaire"
-            }
+        prisma.metierICPP.upsert({
+            where: { code: "HOTELLERIE" },
+            update: {},
+            create: { code: "HOTELLERIE", nom: "Hôtellerie", description: "Hébergement, réception" }
         })
     ])
 
-    console.log(`✅ Created ${metiers.length} métiers`)
+    console.log(`✅ Created/updated ${metiers.length} métiers`)
 
     // ============================================
     // 2. CATÉGORIES DE RISQUES
     // ============================================
 
-    console.log("📊 Creating Catégories de Risques...")
+    console.log("📋 Creating Catégories de Risques...")
 
     const categories = await Promise.all([
-        prisma.risqueCategorie.create({
-            data: {
-                code: "PHYSIQUE",
-                nom: "Risques Physiques",
-                description: "Chutes, coupures, brûlures, etc.",
-                ordre: 1
-            }
+        prisma.risqueCategorie.upsert({
+            where: { code: "PHYSIQUE" },
+            update: {},
+            create: { code: "PHYSIQUE", nom: "Risques physiques", description: "Chutes, TMS, bruit, température", ordre: 1 }
         }),
-        prisma.risqueCategorie.create({
-            data: {
-                code: "CHIMIQUE",
-                nom: "Risques Chimiques",
-                description: "Exposition à des produits chimiques",
-                ordre: 2
-            }
+        prisma.risqueCategorie.upsert({
+            where: { code: "CHIMIQUE" },
+            update: {},
+            create: { code: "CHIMIQUE", nom: "Risques chimiques", description: "Exposition aux produits chimiques", ordre: 2 }
         }),
-        prisma.risqueCategorie.create({
-            data: {
-                code: "BIOLOGIQUE",
-                nom: "Risques Biologiques",
-                description: "Exposition à des agents biologiques",
-                ordre: 3
-            }
+        prisma.risqueCategorie.upsert({
+            where: { code: "BIOLOGIQUE" },
+            update: {},
+            create: { code: "BIOLOGIQUE", nom: "Risques biologiques", description: "Virus, bactéries", ordre: 3 }
         }),
-        prisma.risqueCategorie.create({
-            data: {
-                code: "ERGONOMIQUE",
-                nom: "Risques Ergonomiques (TMS)",
-                description: "Troubles musculo-squelettiques",
-                ordre: 4
-            }
+        prisma.risqueCategorie.upsert({
+            where: { code: "PSYCHOSOCIAUX" },
+            update: {},
+            create: { code: "PSYCHOSOCIAUX", nom: "Risques psychosociaux", description: "Stress, harcèlement", ordre: 4 }
         }),
-        prisma.risqueCategorie.create({
-            data: {
-                code: "PSYCHOSOCIAL",
-                nom: "Risques Psychosociaux",
-                description: "Stress, charge mentale, harcèlement",
-                ordre: 5
-            }
+        prisma.risqueCategorie.upsert({
+            where: { code: "ELECTRIQUE" },
+            update: {},
+            create: { code: "ELECTRIQUE", nom: "Risques électriques", description: "Contact électrique", ordre: 5 }
         }),
-        prisma.risqueCategorie.create({
-            data: {
-                code: "MECANIQUE",
-                nom: "Risques Mécaniques",
-                description: "Machines, outils, équipements",
-                ordre: 6
-            }
+        prisma.risqueCategorie.upsert({
+            where: { code: "INCENDIE" },
+            update: {},
+            create: { code: "INCENDIE", nom: "Risques incendie-explosion", description: "Feu, explosion", ordre: 6 }
         }),
-        prisma.risqueCategorie.create({
-            data: {
-                code: "ELECTRIQUE",
-                nom: "Risques Électriques",
-                description: "Installations et équipements électriques",
-                ordre: 7
-            }
-        }),
-        prisma.risqueCategorie.create({
-            data: {
-                code: "INCENDIE",
-                nom: "Risques d'Incendie",
-                description: "Risques liés au feu et aux matériaux inflammables",
-                ordre: 8
-            }
+        prisma.risqueCategorie.upsert({
+            where: { code: "ERGONOMIQUE" },
+            update: {},
+            create: { code: "ERGONOMIQUE", nom: "Risques ergonomiques", description: "Postures, gestes répétitifs", ordre: 7 }
         })
     ])
 
-    console.log(`✅ Created ${categories.length} catégories`)
+    console.log(`✅ Created/updated ${categories.length} catégories`)
 
     // ============================================
-    // 3. RISQUES PAR MÉTIER (Échantillon)
-    // ============================================
-
-    console.log("⚠️  Creating Risques Métier...")
-
-    // COIFFURE
-    const risquesCoiffure = await Promise.all([
-        prisma.risqueMetier.create({
-            data: {
-                categorieCode: "CHIMIQUE",
-                metierCode: "COIFFURE",
-                nom: "Produits chimiques (colorations, permanentes)",
-                description: "Exposition aux produits capillaires contenant des substances chimiques (ammoniaque, peroxyde, etc.)",
-                gravite: "ELEVE",
-                frequence: 4,
-                mesuresSuggerees: JSON.stringify([
-                    "Port de gants adaptés",
-                    "Ventilation du local",
-                    "Formation aux produits chimiques",
-                    "Stockage sécurisé des produits"
-                ])
-            }
-        }),
-        prisma.risqueMetier.create({
-            data: {
-                categorieCode: "ERGONOMIQUE",
-                metierCode: "COIFFURE",
-                nom: "Troubles musculo-squelettiques (TMS)",
-                description: "Station debout prolongée, gestes répétitifs, postures contraignantes",
-                gravite: "MOYEN",
-                frequence: 5,
-                mesuresSuggerees: JSON.stringify([
-                    "Pauses régulières",
-                    "Tapis anti-fatigue",
-                    "Formation gestes et postures",
-                    "Sièges réglables pour clients"
-                ])
-            }
-        }),
-        prisma.risqueMetier.create({
-            data: {
-                categorieCode: "PHYSIQUE",
-                metierCode: "COIFFURE",
-                nom: "Chutes (sol mouillé)",
-                description: "Risque de glissade sur sol humide après shampooing",
-                gravite: "MOYEN",
-                frequence: 3,
-                mesuresSuggerees: JSON.stringify([
-                    "Tapis antidérapants",
-                    "Nettoyage immédiat des éclaboussures",
-                    "Signalétique 'Sol mouillé'",
-                    "Chaussures antidérapantes"
-                ])
-            }
-        }),
-        prisma.risqueMetier.create({
-            data: {
-                categorieCode: "PHYSIQUE",
-                metierCode: "COIFFURE",
-                nom: "Coupures (ciseaux, rasoirs)",
-                description: "Coupures avec outils tranchants lors de la coupe",
-                gravite: "FAIBLE",
-                frequence: 2,
-                mesuresSuggerees: JSON.stringify([
-                    "Formation utilisation des outils",
-                    "Rangement sécurisé",
-                    "Trousse de premiers secours",
-                    "Désinfection des plaies"
-                ])
-            }
-        }),
-        prisma.risqueMetier.create({
-            data: {
-                categorieCode: "PSYCHOSOCIAL",
-                metierCode: "COIFFURE",
-                nom: "Stress et charge de travail",
-                description: "Rythme intense, horaires décalés, relation client exigeante",
-                gravite: "MOYEN",
-                frequence: 4,
-                mesuresSuggerees: JSON.stringify([
-                    "Planning équilibré",
-                    "Pauses régulières",
-                    "Communication en équipe",
-                    "Formation gestion du stress"
-                ])
-            }
-        })
-    ])
-
-    // RESTAURATION
-    const risquesRestau = await Promise.all([
-        prisma.risqueMetier.create({
-            data: {
-                categorieCode: "PHYSIQUE",
-                metierCode: "RESTAURATION",
-                nom: "Brûlures (four, plaques chauffantes)",
-                description: "Contact avec surfaces chaudes, projections d'huile",
-                gravite: "ELEVE",
-                frequence: 4,
-                mesuresSuggerees: JSON.stringify([
-                    "Gants anti-chaleur",
-                    "Formation sécurité cuisine",
-                    "Signalétique zones chaudes",
-                    "Écrans de protection friteuse"
-                ])
-            }
-        }),
-        prisma.risqueMetier.create({
-            data: {
-                categorieCode: "PHYSIQUE",
-                metierCode: "RESTAURATION",
-                nom: "Coupures (couteaux, trancheurs)",
-                description: "Manipulation d'outils tranchants en cuisine",
-                gravite: "MOYEN",
-                frequence: 4,
-                mesuresSuggerees: JSON.stringify([
-                    "Couteaux bien affûtés",
-                    "Formation découpe",
-                    "Gants anti-coupure",
-                    "Rangement sécurisé"
-                ])
-            }
-        }),
-        prisma.risqueMetier.create({
-            data: {
-                categorieCode: "ERGONOMIQUE",
-                metierCode: "RESTAURATION",
-                nom: "Port de charges lourdes",
-                description: "Manipulation de cartons, stocks, matériel lourd",
-                gravite: "MOYEN",
-                frequence: 3,
-                mesuresSuggerees: JSON.stringify([
-                    "Formation manutention",
-                    "Aide mécanique (diable, chariot)",
-                    "Organisation des stocks",
-                    "Travail en équipe"
-                ])
-            }
-        }),
-        prisma.risqueMetier.create({
-            data: {
-                categorieCode: "PSYCHOSOCIAL",
-                metierCode: "RESTAURATION",
-                nom: "Stress et horaires décalés",
-                description: "Rythme intense, service en continu, horaires atypiques",
-                gravite: "MOYEN",
-                frequence: 5,
-                mesuresSuggerees: JSON.stringify([
-                    "Planning équilibré",
-                    "Pauses obligatoires",
-                    "Communication équipe",
-                    "Respect temps de repos"
-                ])
-            }
-        }),
-        prisma.risqueMetier.create({
-            data: {
-                categorieCode: "INCENDIE",
-                metierCode: "RESTAURATION",
-                nom: "Risque incendie (cuisine)",
-                description: "Présence de flammes, huiles chaudes, matériaux inflammables",
-                gravite: "ELEVE",
-                frequence: 2,
-                mesuresSuggerees: JSON.stringify([
-                    "Extincteurs adaptés (classe F)",
-                    "Couverture anti-feu",
-                    "Formation incendie",
-                    "Entretien hottes et filtres"
-                ])
-            }
-        })
-    ])
-
-    console.log(`✅ Created ${risquesCoiffure.length + risquesRestau.length} risques métier`)
-
-    // ============================================
-    // 4. PLANS TARIFAIRES
+    // 3. PLANS TARIFAIRES
     // ============================================
 
     console.log("💰 Creating Plans Tarifaires...")
 
     const plans = await Promise.all([
-        prisma.planTarifaire.create({
-            data: {
+        prisma.planTarifaire.upsert({
+            where: { code: "ESSENTIEL" },
+            update: {},
+            create: {
                 code: "ESSENTIEL",
                 nom: "Essentiel",
                 description: "Pour démarrer en toute conformité",
-                prixMensuel: 1900, // 19€
-                fraisSetup: 4900, // 49€
-                fonctionnalites: JSON.stringify([
-                    "DUERP digital",
-                    "Affichages obligatoires",
-                    "Mises à jour réglementaires",
-                    "Support email"
-                ]),
+                prixMensuel: 1900,
+                fraisSetup: 4900,
+                fonctionnalites: JSON.stringify(["DUERP digital", "Affichages obligatoires", "Mises à jour réglementaires"]),
                 ordre: 1
             }
         }),
-        prisma.planTarifaire.create({
-            data: {
+        prisma.planTarifaire.upsert({
+            where: { code: "PRO" },
+            update: {},
+            create: {
                 code: "PRO",
                 nom: "Pro",
                 description: "Pour une gestion complète",
-                prixMensuel: 3900, // 39€
+                prixMensuel: 3900,
                 fraisSetup: 4900,
-                fonctionnalites: JSON.stringify([
-                    "Tout Essentiel +",
-                    "Gestion multi-sites",
-                    "Rapports personnalisés",
-                    "Support prioritaire",
-                    "Audit annuel"
-                ]),
+                fonctionnalites: JSON.stringify(["Tout Essentiel +", "Gestion multi-sites", "Rapports personnalisés"]),
                 ordre: 2
             }
         }),
-        prisma.planTarifaire.create({
-            data: {
+        prisma.planTarifaire.upsert({
+            where: { code: "PREMIUM" },
+            update: {},
+            create: {
                 code: "PREMIUM",
                 nom: "Premium",
-                description: "Accompagnement sur-mesure",
-                prixMensuel: 7900, // 79€
-                fraisSetup: 4900,
-                fonctionnalites: JSON.stringify([
-                    "Tout Pro +",
-                    "Accompagnement dédié",
-                    "Formation en présentiel",
-                    "Audit trimestriel",
-                    "Assistance juridique"
-                ]),
+                description: "Solution complète entreprise",
+                prixMensuel: 7900,
+                fraisSetup: 9900,
+                fonctionnalites: JSON.stringify(["Tout Pro +", "Support dédié", "Formation incluse", "API access"]),
                 ordre: 3
             }
         })
     ])
 
-    console.log(`✅ Created ${plans.length} plans tarifaires`)
+    console.log(`✅ Created/updated ${plans.length} plans tarifaires`)
 
     // ============================================
-    // 5. CGV
+    // 4. ADMIN USER
     // ============================================
 
-    console.log("📄 Creating CGV...")
+    console.log("👤 Creating Admin User...")
 
-    const cgv = await prisma.cGVVersion.create({
-        data: {
-            version: "1.0",
-            contenu: "Conditions Générales de Vente ICPP Platform - Version 1.0",
-            datePublication: new Date("2026-01-01"),
-            isActive: true
-        }
-    })
-
-    console.log("✅ Created CGV version 1.0")
-
-    // ============================================
-    // 6. DONNÉES DE TEST
-    // ============================================
-
-    console.log("🧪 Creating test data...")
-
-    const hashedPassword = await bcrypt.hash("password123", 10)
-
-    // Admin
-    const adminUser = await prisma.user.create({
-        data: {
-            email: "admin@icpp-platform.fr",
-            name: "Admin ICPP",
-            password: hashedPassword,
+    const adminUser = await prisma.user.upsert({
+        where: { email: "admin@icpp.re" },
+        update: {},
+        create: {
+            name: "Administrateur ICPP",
+            email: "admin@icpp.re",
+            password: "$2b$10$J7vLvJoHX9xOz0L7V2uu9O0T5r.CqRYBT9F5Fy7B6Q0VJh0rB5x/K", // Hashed "Admin123!"
             role: "ADMIN",
             emailVerified: new Date()
         }
     })
 
-    // Company 1 - Coiffure
-    const company1 = await prisma.company.create({
-        data: {
+    console.log(`✅ Admin user created: ${adminUser.email}`)
+
+    // ============================================
+    // 5. SAMPLE COMPANIES
+    // ============================================
+
+    console.log("🏪 Creating Sample Companies...")
+
+    const company1 = await prisma.company.upsert({
+        where: { siret: "12345678901234" },
+        update: {},
+        create: {
             name: "Salon Belle Allure",
             siret: "12345678901234",
             metierCode: "COIFFURE",
@@ -468,73 +206,43 @@ async function main() {
             postalCode: "97400",
             city: "Saint-Denis",
             phone: "+262 262 12 34 56",
-            email: "contact@belleallure.re"
+            email: "contact@belle-allure.re"
         }
     })
 
-    const user1 = await prisma.user.create({
-        data: {
-            email: "marie@belleallure.re",
-            name: "Marie Dupont",
-            password: hashedPassword,
-            role: "CLIENT",
-            companyId: company1.id,
-            emailVerified: new Date()
+    const company2 = await prisma.company.upsert({
+        where: { siret: "98765432109876" },
+        update: {},
+        create: {
+            name: "Restaurant Le Créole",
+            siret: "98765432109876",
+            metierCode: "RESTAURATION",
+            employeeCount: 8,
+            address: "25 Boulevard Sud",
+            postalCode: "97410",
+            city: "Saint-Pierre",
+            phone: "+262 262 98 76 54",
+            email: "contact@lecreole.re"
         }
     })
 
-    // Subscription
-    await prisma.subscription.create({
-        data: {
-            companyId: company1.id,
-            planCode: "PRO",
-            status: "ACTIVE",
-            currentPeriodStart: new Date(),
-            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            setupFeePaid: true,
-            setupFeePaidAt: new Date()
-        }
-    })
+    console.log(`✅ Created sample companies: ${company1.name}, ${company2.name}`)
 
-    // Contrat
-    await prisma.contrat.create({
-        data: {
-            numeroContrat: "ICPP-2026-001",
-            companyId: company1.id,
-            cgvVersion: "1.0",
-            dateDebut: new Date(),
-            signedAt: new Date(),
-            signatureData: JSON.stringify({
-                ip: "192.168.1.1",
-                timestamp: new Date().toISOString()
-            }),
-            status: "ACTIF"
-        }
-    })
+    // ============================================
+    // Note: UTs and Risques are seeded via SQL
+    // Run: npx prisma db execute --file .\prisma\seed-complete.sql
+    // ============================================
 
-    console.log("✅ Created test company and user")
-
-    console.log("\n🎉 Seed completed successfully!\n")
-    console.log("📊 Summary:")
-    console.log(`- ${metiers.length} métiers ICPP`)
-    console.log(`- ${categories.length} catégories de risques`)
-    console.log(`- ${risquesCoiffure.length + risquesRestau.length} risques métier`)
-    console.log(`- ${plans.length} plans tarifaires`)
-    console.log("- 1 version CGV")
-    console.log("- 1 company de test")
-    console.log("- 2 users (admin + client)")
-    console.log("\n👤 Test accounts:")
-    console.log("Admin: admin@icpp-platform.fr / password123")
-    console.log("Client: marie@belleallure.re / password123")
+    console.log("\n✅ Seed completed successfully!")
+    console.log("💡 For complete seed with UTs and Risques, run:")
+    console.log("   npx prisma db execute --file .\\prisma\\seed-complete.sql")
 }
 
 main()
     .catch((e) => {
-        console.error("❌ Seed failed:")
-        console.error(e)
+        console.error("❌ Seed failed:", e)
         process.exit(1)
     })
     .finally(async () => {
         await prisma.$disconnect()
     })
-
