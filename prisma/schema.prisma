@@ -32,8 +32,9 @@ model User {
   sessions      Session[]
   
   // Audit
-  duerpsSigned  DuerpDocument[] @relation("SignedBy")
-  auditLogs     AuditLog[]
+  duerpsSigned    DuerpDocument[] @relation("SignedBy")
+  auditLogs       AuditLog[]
+  auditsAssigned  Audit[]         @relation("AuditsAssigned")
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -97,13 +98,40 @@ model MetierICPP {
   isActive    Boolean  @default(true)
   
   // Relations
-  companies   Company[]
-  risques     RisqueMetier[]
+  companies       Company[]
+  risques         RisqueMetier[]
+  unitesTravail   UniteTravail[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("metiers_icpp")
+}
+
+// ============================================
+// UNITÉS DE TRAVAIL (UT) PAR MÉTIER
+// ============================================
+
+model UniteTravail {
+  id          String   @id @default(cuid())
+  
+  // Métier parent
+  metierCode  String
+  metier      MetierICPP @relation(fields: [metierCode], references: [code], onDelete: Cascade)
+  
+  // Informations
+  nom         String   // "UT1 : Accueil / Vente"
+  description String?  // Description optionnelle
+  ordre       Int      @default(1) // Ordre d'affichage (1, 2, 3...)
+  
+  // Relations
+  risques     RisqueMetier[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([metierCode])
+  @@map("unites_travail")
 }
 
 // ============================================
@@ -121,12 +149,17 @@ model Company {
   
   employeeCount   Int      @default(1)
   
-  // Contact
+  // Contact entreprise
   address         String
   postalCode      String?
   city            String
   phone           String?
   email           String?
+  
+  // Contact principal (responsable)
+  contactName     String?
+  contactRole     String?
+  contactEmail    String?
   
   // Business hours
   openingHours    String?  // JSON string
@@ -137,6 +170,8 @@ model Company {
   subscription    Subscription?
   affichages      Affichage[]
   contrats        Contrat[]
+  audits          Audit[]
+  signalements    Signalement[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -176,6 +211,10 @@ model RisqueMetier {
   metierCode      String
   metier          MetierICPP @relation(fields: [metierCode], references: [code])
   
+  // Unité de Travail (optionnel - pour affectation à une UT spécifique)
+  uniteTravailId  String?
+  uniteTravail    UniteTravail? @relation(fields: [uniteTravailId], references: [id], onDelete: SetNull)
+  
   // Contenu
   nom             String
   description     String
@@ -195,6 +234,7 @@ model RisqueMetier {
 
   @@index([categorieCode])
   @@index([metierCode])
+  @@index([uniteTravailId])
   @@map("risques_metier")
 }
 
@@ -487,4 +527,132 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ============================================
+// AUDITS TERRAIN (Planification)
+// ============================================
+
+model Audit {
+  id            String    @id @default(cuid())
+  
+  // Company
+  companyId     String
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Auditor assigned
+  auditorId     String?
+  auditor       User?     @relation("AuditsAssigned", fields: [auditorId], references: [id], onDelete: SetNull)
+  
+  // Type & Status
+  type          String    @default("INITIAL") // INITIAL, ANNUEL, INCIDENT
+  status        String    @default("PLANIFIE") // PLANIFIE, EN_COURS, TERMINE, ANNULE
+  
+  // Dates
+  dateAudit     DateTime
+  dateRealisation DateTime?
+  
+  // Observations
+  observations  String?
+  rapport       String?   // PDF URL
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([auditorId])
+  @@index([status])
+  @@map("audits")
+}
+
+// ============================================
+// SIGNALEMENTS
+// ============================================
+
+model Signalement {
+  id          String    @id @default(cuid())
+  
+  // Reporter
+  userId      String?
+  companyId   String?
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  
+  // Content
+  type        String    // INCIDENT, DANGER, AMELIORATION
+  titre       String
+  description String
+  
+  // Status
+  status      String    @default("NOUVEAU") // NOUVEAU, EN_COURS, TRAITE, REJETE
+  
+  // Response
+  reponse     String?
+  traiteParId String?
+  traiteAt    DateTime?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([companyId])
+  @@map("signalements")
+}
+
+// ============================================
+// RÉGLEMENTATIONS PAR MÉTIER
+// ============================================
+
+model Reglementation {
+  id          String    @id @default(cuid())
+  
+  // Métier concerné (optionnel - null = applicable à tous)
+  metierCode  String?
+  
+  // Métiers concernés (JSON array des codes métiers)
+  metiersCodes String   @default("[]")
+  
+  // Content
+  titre       String
+  description String?
+  contenu     String?   // Rich text ou markdown
+  
+  // Type de réglementation
+  type        String    @default("GENERALE") // GENERALE, HYGIENE, SECURITE, ENVIRONNEMENT
+  
+  // Categorization (garde pour rétrocompatibilité)
+  categorie   String    @default("GENERAL") // GENERAL, HYGIENE, SECURITE, ENVIRONNEMENT
+  
+  // Status
+  isActive    Boolean   @default(true)
+  impactDuerp Boolean   @default(false)
+  ordre       Int       @default(0)
+  
+  // Dates
+  dateVigueur     DateTime  @default(now())  // Date d'entrée en vigueur
+  dateMaj         DateTime  @default(now())  // Date de mise à jour
+  dateApplication DateTime?
+  dateExpiration  DateTime?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([metierCode])
+  @@index([isActive])
+  @@map("reglementations")
+}
+
+// ============================================
+// APP SETTINGS (Paramètres Globaux)
+// ============================================
+
+model AppSettings {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  value       String
+  description String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("app_settings")
 }

@@ -1,10 +1,18 @@
 import Stripe from "stripe"
 
-if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error("STRIPE_SECRET_KEY is not defined")
-}
+// Stripe est optionnel en mode développement
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY
 
 // @ts-ignore - Stripe API version compatibility
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2024-12-18.acacia" as any,
-})
+export const stripe = stripeSecretKey 
+    ? new Stripe(stripeSecretKey, {
+        apiVersion: "2024-12-18.acacia" as any,
+    })
+    : null
+
+/**
+ * Vérifie si Stripe est configuré et disponible
+ */
+export function isStripeEnabled(): boolean {
+    return stripe !== null
+}

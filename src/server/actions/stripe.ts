@@ -1,6 +1,6 @@
 "use server"
 
-import { stripe } from "@/lib/stripe"
+import { stripe, isStripeEnabled } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
 import { getCurrentUser } from "@/lib/auth-helpers"
 
@@ -8,6 +8,11 @@ import { getCurrentUser } from "@/lib/auth-helpers"
  * Create a Stripe checkout session for a subscription
  */
 export async function createCheckoutSession(planCode: string) {
+    // Vérifier si Stripe est configuré
+    if (!isStripeEnabled() || !stripe) {
+        throw new Error("Stripe is not configured. Please set STRIPE_SECRET_KEY.")
+    }
+
     const user = await getCurrentUser()
 
     if (!user || !user.companyId) {
@@ -34,7 +39,7 @@ export async function createCheckoutSession(planCode: string) {
 
     // Create or get subscription record
     let subscription = await prisma.subscription.findUnique({
-        where: { company Id: user.companyId },
+        where: { companyId: user.companyId },
     })
 
     if (!subscription) {
@@ -91,6 +96,11 @@ export async function createCheckoutSession(planCode: string) {
  * Create a Stripe customer portal session
  */
 export async function createCustomerPortalSession() {
+    // Vérifier si Stripe est configuré
+    if (!isStripeEnabled() || !stripe) {
+        throw new Error("Stripe is not configured. Please set STRIPE_SECRET_KEY.")
+    }
+
     const user = await getCurrentUser()
 
     if (!user || !user.companyId) {

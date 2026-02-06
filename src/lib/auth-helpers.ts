@@ -24,13 +24,28 @@ export async function requireAuth() {
 }
 
 /**
- * Require specific role - redirects to unauthorized if role doesn't match
+ * Require specific role - redirects to appropriate dashboard if role doesn't match
+ * IMPORTANT: Does NOT redirect to /dashboard to avoid infinite loops
  */
 export async function requireRole(allowedRoles: string[]) {
     const user = await requireAuth()
 
     if (!allowedRoles.includes(user.role)) {
-        redirect("/unauthorized")
+        // Redirect to appropriate dashboard based on user's actual role
+        if (user.role === "ADMIN") {
+            redirect("/admin")
+        } else if (user.role === "AUDITOR" || user.role === "COMMERCIAL") {
+            redirect("/auditeur")
+        } else if (user.role === "CLIENT") {
+            // Only redirect to dashboard if we are NOT already checking for CLIENT role
+            // This prevents infinite loop on /dashboard since /dashboard calls requireRole(["CLIENT"])
+            if (!allowedRoles.includes("CLIENT")) {
+                redirect("/dashboard")
+            }
+        } else {
+            // Unknown role - redirect to login
+            redirect("/login")
+        }
     }
 
     return user

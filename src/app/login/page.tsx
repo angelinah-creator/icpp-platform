@@ -63,13 +63,22 @@ export default function LoginPage() {
 
         try {
             const result = await loginAction({ email, password })
-            if (result?.error) {
+            // Only set error if result exists and has an error property
+            // If result is undefined (redirect happened), don't set error
+            if (result && result.error) {
                 setError(result.error)
+                setIsLoading(false)
             }
-            // Redirection will happen in the server action
+            // Note: if login successful, redirect happens server-side
+            // so we won't reach here - keep isLoading true to show spinner
         } catch (err) {
+            // Check if this is a redirect error (NEXT_REDIRECT)
+            // Redirects in Next.js throw an error with a specific digest
+            if (err && typeof err === 'object' && 'digest' in err) {
+                // This is a redirect, not an actual error - don't show error message
+                return
+            }
             setError("Une erreur est survenue lors de la connexion")
-        } finally {
             setIsLoading(false)
         }
     }
@@ -82,24 +91,16 @@ export default function LoginPage() {
             <div className="flex w-full items-center justify-center bg-white px-8 lg:w-1/2 lg:px-16">
                 <div className="w-full max-w-md space-y-8">
                     {/* Logo & Header */}
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <div className="relative h-10 w-10">
-                                <Image
-                                    src="/logo-icpp.png"
-                                    alt="ICPP Logo"
-                                    fill
-                                    className="object-contain"
-                                />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-bold text-blue-600">
-                                    ICPP Conformité
-                                </h1>
-                                <p className="text-xs text-gray-600">
-                                    Institut de Conformité et de Prévention Professionnelle
-                                </p>
-                            </div>
+                    <div className="space-y-6">
+                        <div className="relative h-12 w-auto">
+                            <Image
+                                src="/Frame 13 logo.png"
+                                alt="ICPP Conformité"
+                                width={300}
+                                height={48}
+                                className="object-contain object-left"
+                                priority
+                            />
                         </div>
 
                         <div>
@@ -196,7 +197,7 @@ export default function LoginPage() {
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            className="w-full bg-gradient-to-r from-[#2048BF] to-[#679CFF] hover:opacity-90"
                         >
                             {isLoading ? (
                                 "Connexion..."
@@ -220,7 +221,7 @@ export default function LoginPage() {
             </div>
 
             {/* Right Panel - Dynamic Content */}
-            <div className="hidden w-1/2 bg-gradient-to-br from-blue-600 to-blue-700 lg:flex lg:items-center lg:justify-center lg:px-16">
+            <div className="hidden w-1/2 bg-gradient-to-br from-[#2048BF] to-[#679CFF] lg:flex lg:items-center lg:justify-center lg:px-16">
                 <div className="max-w-lg space-y-8 text-white">
                     <div className="space-y-4">
                         <h2 className="text-4xl font-bold leading-tight">

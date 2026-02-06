@@ -1,41 +1,56 @@
-import { getCurrentUser } from "@/lib/auth-helpers"
+import { AdminHeader } from "@/components/admin/admin-header"
+import { StatsCards } from "@/components/admin/stats-cards"
+import { ComplianceCards } from "@/components/admin/compliance-cards"
+import { RecentClientsTable } from "@/components/admin/recent-clients-table"
+import { getAdminStats, getCompanies } from "@/server/actions/admin"
 
 export default async function AdminDashboard() {
-    const user = await getCurrentUser()
+    // Fetch real data from database
+    const statsData = await getAdminStats()
+    const companiesData = await getCompanies()
+
+    const stats = {
+        totalCompanies: statsData.companies,
+        activeSubscriptions: statsData.subscriptions,
+        completedAudits: statsData.audits.termine,
+        duerpCount: statsData.duerps,
+    }
+
+    // Calculate compliance stats from real companies
+    const complianceStats = {
+        compliant: companiesData.filter(c => c.statutConformite === "Conforme").length,
+        partial: companiesData.filter(c => c.statutConformite === "Partiellement conforme").length,
+        nonCompliant: companiesData.filter(c => c.statutConformite === "Non conforme").length,
+    }
+
+    // Transform companies for table display
+    const recentClients = companiesData.slice(0, 5).map(company => ({
+        id: company.id,
+        name: company.nom,
+        email: company.email,
+        activity: company.activite,
+        subscription: company.abonnement as "Essentiel" | "Pro" | "Premium",
+        status: company.statutConformite as "Conforme" | "Partiellement conforme" | "Non conforme",
+        duerpStatus: company.duerp as "A jour" | "En cours" | "A faire",
+    }))
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold">Dashboard Administrateur</h1>
-                <p className="text-gray-600">
-                    Bienvenue, {user?.name || "Administrateur"}
-                </p>
-            </div>
+        <div className="bg-slate-50 min-h-full pb-10">
+            {/* Header */}
+            <AdminHeader
+                title="Tableau de bord – ICPP Conformité"
+                subtitle="Vue d'ensemble de l'activité et de la conformité clients"
+            />
 
-            {/* Stats Grid */}
-            <div className="grid gap-6 md:grid-cols-3">
-                <div className="rounded-lg border bg-white p-6">
-                    <div className="text-sm font-medium text-gray-600">Total TPE</div>
-                    <div className="mt-2 text-3xl font-bold">0</div>
-                </div>
-                <div className="rounded-lg border bg-white p-6">
-                    <div className="text-sm font-medium text-gray-600">DUERP Actifs</div>
-                    <div className="mt-2 text-3xl font-bold">0</div>
-                </div>
-                <div className="rounded-lg border bg-white p-6">
-                    <div className="text-sm font-medium text-gray-600">
-                        Audits en cours
-                    </div>
-                    <div className="mt-2 text-3xl font-bold">0</div>
-                </div>
-            </div>
+            <div className="px-8 py-8 space-y-8">
+                {/* Section Cards KPIs */}
+                <StatsCards stats={stats} />
 
-            {/* Recent Activity */}
-            <div className="rounded-lg border bg-white p-6">
-                <h2 className="text-xl font-semibold">Activité récente</h2>
-                <p className="mt-4 text-center text-gray-500">
-                    Aucune activité récente
-                </p>
+                {/* Section Conformité */}
+                <ComplianceCards stats={complianceStats} />
+
+                {/* Section Tableau */}
+                <RecentClientsTable clients={recentClients} />
             </div>
         </div>
     )
