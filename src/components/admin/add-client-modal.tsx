@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -74,7 +75,7 @@ export function AddClientModal({ open, onOpenChange, onSuccess, metiers = [], pl
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
                     <DialogTitle className="text-lg font-semibold flex items-center gap-2">
-                        <span className="text-xl">🏢</span>
+                        <Building2 className="h-6 w-6 text-blue-600" />
                         Ajouter un nouveau client
                     </DialogTitle>
                 </DialogHeader>

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Plus, MoreHorizontal, Bell, Briefcase, Check, Eye, Power, Edit } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Bell, Briefcase, Check, Eye, Power, Edit, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -151,15 +151,19 @@ export function MetiersClient({ initialMetiers }: MetiersClientProps) {
 
     return (
         <div className="space-y-6 relative">
+            {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Gestion des métiers</h1>
-                    <p className="text-sm text-slate-500 mt-1">{initialMetiers.length} métier{initialMetiers.length > 1 ? "s" : ""} ICPP</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Gestion des métiers</h1>
+                    <p className="text-slate-500 mt-1">Paramétrez les métiers et types de risques</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="Rechercher ..." className="pl-10 w-48 bg-white" />
+                        <Input
+                            placeholder="Rechercher ..."
+                            className="pl-10 w-[300px] bg-slate-50 border-slate-200"
+                        />
                     </div>
                     <Button variant="ghost" size="icon" className="relative">
                         <Bell className="h-5 w-5 text-slate-600" />
@@ -168,59 +172,61 @@ export function MetiersClient({ initialMetiers }: MetiersClientProps) {
                 </div>
             </div>
 
-            <div className="flex items-center justify-between">
-                <div className="relative">
+            {/* Search and Action Bar */}
+            <div className="flex items-center justify-between gap-4 bg-slate-50/50 p-1 rounded-lg">
+                <div className="relative flex-1 max-w-2xl">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
                         placeholder="Rechercher un métier..."
-                        className="pl-10 w-64 bg-white"
+                        className="pl-10 w-full bg-slate-50 border-slate-200"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
                 <Button
-                    className="bg-gradient-to-r from-[#2048BF] to-[#679CFF] hover:opacity-90"
+                    className="bg-[#2048BF] hover:bg-[#2048BF]/90 text-white gap-2"
                     onClick={() => setIsModalOpen(true)}
                 >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4" />
                     Nouveau métier
                 </Button>
             </div>
 
+            {/* Content (Cards) */}
             {filteredMetiers.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-12 text-slate-500 bg-white rounded-lg border border-dashed">
                     {searchQuery ? "Aucun métier trouvé" : "Aucun métier enregistré"}
                 </div>
             ) : (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredMetiers.map((metier) => (
-                        <Card key={metier.id} className="bg-white border shadow-sm">
-                            <CardContent className="p-4">
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                                        <Briefcase className="h-5 w-5 text-blue-600" />
+                        <Card key={metier.id} className="bg-white border shadow-sm hover:shadow-md transition-shadow">
+                            <CardContent className="p-6">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
+                                        <Briefcase className="h-6 w-6 text-blue-600" />
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Badge className={metier.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                                        <Badge className={metier.isActive ? "bg-green-100 text-green-700 hover:bg-green-200 border-0" : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-0"}>
                                             {metier.isActive ? "Actif" : "Inactif"}
                                         </Badge>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <MoreHorizontal className="h-4 w-4" />
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 -mr-2">
+                                                    <MoreHorizontal className="h-4 w-4 text-slate-500" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => openEditModal(metier)}>
+                                                <DropdownMenuItem onClick={() => openEditModal(metier)} className="cursor-pointer">
                                                     <Edit className="h-4 w-4 mr-2" />
                                                     Modifier
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => openRisquesModal(metier.code, metier.nom)}>
+                                                <DropdownMenuItem onClick={() => openRisquesModal(metier.code, metier.nom)} className="cursor-pointer">
                                                     <Eye className="h-4 w-4 mr-2" />
                                                     Voir risques
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className={metier.isActive ? "text-red-600" : "text-green-600"}
+                                                    className={`cursor-pointer ${metier.isActive ? "text-red-600" : "text-green-600"}`}
                                                     onClick={() => handleToggleStatus(metier.id)}
                                                     disabled={togglingId === metier.id}
                                                 >
@@ -231,11 +237,19 @@ export function MetiersClient({ initialMetiers }: MetiersClientProps) {
                                         </DropdownMenu>
                                     </div>
                                 </div>
-                                <h3 className="font-semibold text-slate-900">{metier.nom}</h3>
-                                <p className="text-sm text-slate-500 mt-1 line-clamp-2">{metier.description}</p>
-                                <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
-                                    <span>{metier.companiesCount} entreprise{metier.companiesCount > 1 ? "s" : ""}</span>
-                                    <span>{metier.unitesTravailCount} UT{metier.unitesTravailCount > 1 ? "s" : ""}</span>
+
+                                <h3 className="text-lg font-semibold text-slate-900 mb-2">{metier.nom}</h3>
+                                <p className="text-sm text-slate-500 mb-4 line-clamp-2 h-10">{metier.description}</p>
+
+                                <div className="flex items-center gap-4 text-xs font-medium text-slate-500 pt-4 border-t border-slate-100">
+                                    <span className="flex items-center gap-1">
+                                        <Building2 className="h-3 w-3" />
+                                        {metier.companiesCount} entreprise{metier.companiesCount > 1 ? "s" : ""}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                                        {metier.unitesTravailCount} UT{metier.unitesTravailCount > 1 ? "s" : ""}
+                                    </span>
                                 </div>
                             </CardContent>
                         </Card>

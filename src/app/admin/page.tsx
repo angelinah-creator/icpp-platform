@@ -35,7 +35,7 @@ export default async function AdminDashboard() {
     }))
 
     return (
-        <div className="bg-slate-50 min-h-full pb-10">
+        <div className="bg-blue-50/10 min-h-full pb-10">
             {/* Header */}
             <AdminHeader
                 title="Tableau de bord – ICPP Conformité"

@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Search, Bell, Filter, Plus, MoreHorizontal, TrendingUp } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Search, Bell, Filter, Plus, MoreHorizontal, TrendingUp, Trash2, Eye, Pencil } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,36 +22,97 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { deleteAudit } from "@/server/actions/client"
 
-export function MesAuditsClient() {
-    // Mock data
+interface Audit {
+    id: string
+    companyName: string
+    companyActivity: string | null
+    date: string
+    score: number | null
+    status: string
+    statusColor: string
+}
+
+interface MesAuditsClientProps {
+    audits: Audit[]
+}
+
+export function MesAuditsClient({ audits }: MesAuditsClientProps) {
+    const router = useRouter()
+    const [searchQuery, setSearchQuery] = useState("")
+    const [statusFilter, setStatusFilter] = useState<string>("all")
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [auditToDelete, setAuditToDelete] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+    
+    // Calculer les stats à partir des audits réels
     const stats = {
-        total: 3,
-        planifies: 1,
-        enCours: 1,
-        termines: 1
+        total: audits.length,
+        planifies: audits.filter(a => a.status === "PLANIFIÉ").length,
+        enCours: audits.filter(a => a.status === "EN_COURS").length,
+        termines: audits.filter(a => a.status === "TERMINÉ").length
     }
 
-    const audits = [
-        {
-            id: 1,
-            entreprise: "Salon Marie Coiffure",
-            activite: "Coiffure",
-            date: "2024-03-15",
-            score: 85,
-            statut: "Terminé",
-            statutColor: "bg-green-100 text-green-700"
-        },
-        {
-            id: 2,
-            entreprise: "Restaurant le Gourmet",
-            activite: "Restauration",
-            date: "2024-03-15",
-            score: 65,
-            statut: "En cours",
-            statutColor: "bg-orange-100 text-orange-700"
+    // Filtrer les audits
+    const filteredAudits = audits.filter(audit => {
+        const matchesSearch = 
+            (audit.companyName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+            (audit.companyActivity?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+        
+        const matchesStatus = statusFilter === "all" || audit.status === statusFilter
+
+        return matchesSearch && matchesStatus
+    })
+
+    const handleDeleteClick = (auditId: string) => {
+        setAuditToDelete(auditId)
+        setDeleteDialogOpen(true)
+    }
+
+    const handleDeleteConfirm = async () => {
+        if (!auditToDelete) return
+        
+        setIsDeleting(true)
+        console.log("🗑️ Suppression de l'audit:", auditToDelete)
+        
+        try {
+            const result = await deleteAudit(auditToDelete)
+            console.log("✅ Résultat de la suppression:", result)
+            
+            if (result.success) {
+                setDeleteDialogOpen(false)
+                setAuditToDelete(null)
+                console.log("🔄 Rafraîchissement de la page...")
+                router.refresh() // Rafraîchir la liste des audits
+            } else {
+                console.error("❌ Erreur:", result.error)
+                alert(result.error || "Erreur lors de la suppression")
+            }
+        } catch (error) {
+            console.error("❌ Exception lors de la suppression:", error)
+            alert("Une erreur est survenue lors de la suppression")
+        } finally {
+            setIsDeleting(false)
         }
-    ]
+    }
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -121,14 +183,23 @@ export function MesAuditsClient() {
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                 <Input
                                     type="text"
-                                    placeholder="Rechercher une entreprise ou commercial..."
+                                    placeholder="Rechercher une entreprise..."
                                     className="pl-10 bg-white border-slate-200"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
-                            <Button variant="outline" className="border-slate-300">
-                                <Filter className="h-4 w-4 mr-2" />
-                                Tous les statuts
-                            </Button>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-48">
+                                    <SelectValue placeholder="Tous les statuts" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Tous les statuts</SelectItem>
+                                    <SelectItem value="PLANIFIÉ">Planifiés</SelectItem>
+                                    <SelectItem value="EN_COURS">En cours</SelectItem>
+                                    <SelectItem value="TERMINÉ">Terminés</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <Link href="/auditeur/audits/nouveau">
                             <Button className="bg-[#4A7FFF] hover:bg-[#3968E6] text-white">
@@ -153,35 +224,40 @@ export function MesAuditsClient() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {audits.map((audit) => (
+                            {filteredAudits.length > 0 ? filteredAudits.map((audit) => (
                                 <TableRow key={audit.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
                                                 <span className="text-xs font-medium text-blue-600">
-                                                    {audit.entreprise.charAt(0)}
+                                                    {audit.companyName.charAt(0)}
                                                 </span>
                                             </div>
-                                            <span className="font-medium text-slate-900">{audit.entreprise}</span>
+                                            <span className="font-medium text-slate-900">{audit.companyName}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-slate-600">{audit.activite}</TableCell>
+                                    <TableCell className="text-slate-600">{audit.companyActivity || "Non défini"}</TableCell>
                                     <TableCell className="text-slate-600">{audit.date}</TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-1 h-2 bg-slate-100 rounded-full max-w-[100px]">
-                                                <div
-                                                    className={`h-full rounded-full ${audit.score >= 80 ? "bg-green-500" : "bg-orange-500"
+                                        {audit.score !== null ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 h-2 bg-slate-100 rounded-full max-w-[100px]">
+                                                    <div
+                                                        className={`h-full rounded-full ${
+                                                            audit.score >= 80 ? "bg-green-500" : "bg-orange-500"
                                                         }`}
-                                                    style={{ width: `${audit.score}%` }}
-                                                />
+                                                        style={{ width: `${audit.score}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-sm font-medium text-slate-900">{audit.score}%</span>
                                             </div>
-                                            <span className="text-sm font-medium text-slate-900">{audit.score}%</span>
-                                        </div>
+                                        ) : (
+                                            <span className="text-sm text-slate-400">-</span>
+                                        )}
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="secondary" className={`${audit.statutColor} border-0 font-medium`}>
-                                            {audit.statut}
+                                        <Badge variant="secondary" className={`${audit.statusColor} border-0 font-medium`}>
+                                            {audit.status}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
@@ -193,27 +269,69 @@ export function MesAuditsClient() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem asChild>
-                                                    <Link href={`/auditeur/audits/${audit.id}`}>
+                                                    <Link href={`/auditeur/audits/${audit.id}`} className="flex items-center">
+                                                        <Eye className="h-4 w-4 mr-2" />
                                                         Voir détails
                                                     </Link>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem asChild>
-                                                    <Link href={`/auditeur/audits/${audit.id}/edit`}>
+                                                    <Link href={`/auditeur/audits/${audit.id}/edit`} className="flex items-center">
+                                                        <Pencil className="h-4 w-4 mr-2" />
                                                         Modifier
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-red-600" onClick={() => alert('Suppression annulée - fonctionnalité à implémenter')}>
+                                                <DropdownMenuItem 
+                                                    className="text-red-600" 
+                                                    onClick={(e) => {
+                                                        e.preventDefault()
+                                                        handleDeleteClick(audit.id)
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4 mr-2" />
                                                     Supprimer
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                                        Aucun audit pour le moment.
+                                        <Link href="/auditeur/audits/nouveau" className="text-blue-600 hover:underline ml-2">
+                                            Créer votre premier audit
+                                        </Link>
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </div>
             </div>
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Êtes-vous sûr de vouloir supprimer cet audit ? Cette action est irréversible et supprimera également tous les documents et risques associés.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={(e) => {
+                                e.preventDefault()
+                                handleDeleteConfirm()
+                            }}
+                            disabled={isDeleting}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            {isDeleting ? "Suppression..." : "Supprimer"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

@@ -65,7 +65,7 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
     }
 
     return (
-        <div className="border-b border-slate-200 bg-white px-8 py-6">
+        <div className="border-b border-slate-300 bg-white px-8 py-6">
             <div className="flex items-center justify-between">
                 {/* Title Section */}
                 <div>

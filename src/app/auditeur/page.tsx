@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { getAuditeurDashboardData } from "@/server/actions/client"
+import { getAuditeurDashboardData, getAuditeurTaches, getAuditeurSignalements } from "@/server/actions/client"
 import { AuditeurDashboardClient } from "./dashboard-client"
 
 export default async function AuditeurDashboard() {
@@ -9,5 +9,11 @@ export default async function AuditeurDashboard() {
         redirect("/login")
     }
 
-    return <AuditeurDashboardClient data={data} />
+    // Récupérer les tâches et signalements
+    const [taches, signalements] = await Promise.all([
+        getAuditeurTaches(),
+        getAuditeurSignalements()
+    ])
+
+    return <AuditeurDashboardClient data={data} taches={taches} signalements={signalements} />
 }

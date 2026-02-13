@@ -155,6 +155,10 @@ export async function createCompany(data: {
         })
     }
 
+    // Auto-generate 4 affichages obligatoires
+    const { seedAffichagesForCompany } = await import("@/lib/seed-affichages")
+    await seedAffichagesForCompany(company.id)
+
     revalidatePath("/admin/entreprises")
     return { success: true, company }
 }
@@ -383,6 +387,27 @@ export async function createAudit(data: {
 
     revalidatePath("/admin/audits")
     return { success: true, audit }
+}
+
+export async function updateAuditStatus(id: string, status: string) {
+    await prisma.audit.update({
+        where: { id },
+        data: { status }
+    })
+    revalidatePath("/admin/audits")
+    return { success: true }
+}
+
+export async function deleteAdminAudit(id: string) {
+    await prisma.audit.delete({ where: { id } })
+    revalidatePath("/admin/audits")
+    return { success: true }
+}
+
+export async function deleteSignalement(id: string) {
+    await prisma.signalement.delete({ where: { id } })
+    revalidatePath("/admin/signalements")
+    return { success: true }
 }
 
 // ============================================
@@ -779,36 +804,48 @@ export async function getAffichages() {
     return affichages.map(a => ({
         id: a.id,
         type: a.type,
+        category: a.category,
         title: a.title,
         description: a.description || "",
         companyName: a.company.name,
         companyId: a.company.id,
         fileUrl: a.fileUrl,
+        dynamicData: a.dynamicData,
+        version: a.version,
+        isLocked: a.isLocked,
         downloaded: a.downloaded,
         printed: a.printed,
+        generatedAt: a.generatedAt?.toISOString() || null,
         createdAt: a.createdAt.toISOString()
     }))
 }
 
 export async function createAffichage(data: {
     type: string
+    category?: string
     title: string
     description?: string
     companyId: string
     fileUrl?: string
+    dynamicData?: string
+    isLocked?: boolean
 }) {
     try {
         const affichage = await prisma.affichage.create({
             data: {
                 type: data.type,
+                category: data.category || "FICHE_1",
                 title: data.title,
                 description: data.description || null,
                 companyId: data.companyId,
-                fileUrl: data.fileUrl || null
+                fileUrl: data.fileUrl || null,
+                dynamicData: data.dynamicData || null,
+                isLocked: data.isLocked || false,
             }
         })
 
         revalidatePath("/admin/affichages")
+        revalidatePath("/dashboard/affichages")
         return { success: true, affichage }
     } catch (error) {
         return { error: "Erreur lors de la création de l'affichage" }

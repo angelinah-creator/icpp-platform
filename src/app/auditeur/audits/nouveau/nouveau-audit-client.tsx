@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Bell, ArrowLeft, ArrowRight, Check, Building2, FileText, AlertTriangle, ClipboardCheck } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Search, Bell, ArrowLeft, ArrowRight, Check, Building2, FileText, AlertTriangle, ClipboardCheck, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -15,6 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { createAudit } from "@/server/actions/client"
 
 type Step = 1 | 2 | 3 | 4
 
@@ -38,11 +40,26 @@ interface RiskItem {
     frequence?: number
 }
 
-export function NouvelAuditClient() {
+interface Client {
+    id: string
+    name: string
+    activity?: string | null
+    address?: string | null
+    email?: string | null
+}
+
+interface NouvelAuditClientProps {
+    clients: Client[]
+}
+
+export function NouvelAuditClient({ clients }: NouvelAuditClientProps) {
+    const router = useRouter()
     const [currentStep, setCurrentStep] = useState<Step>(1)
     const [selectedEntreprise, setSelectedEntreprise] = useState<string>("")
     const [selectedMetier, setSelectedMetier] = useState<string>("")
     const [commentaire, setCommentaire] = useState("")
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     // Documents
     const [documents, setDocuments] = useState<DocumentItem[]>([
@@ -109,14 +126,6 @@ export function NouvelAuditClient() {
         },
     ])
 
-    const entreprises = [
-        { id: "1", name: "Restaurant le Gourmet", activite: "Restauration", adresse: "48 Avenue des Champs, 75008 Paris", email: "contact@legourmet.fr" }
-    ]
-
-    const metiers = [
-        { id: "1", name: "Groupe restauration rapide" }
-    ]
-
     const steps = [
         { id: 1, label: "Entreprise", icon: Building2, completed: currentStep > 1 },
         { id: 2, label: "Documents", icon: FileText, completed: currentStep > 2 },
@@ -137,12 +146,108 @@ export function NouvelAuditClient() {
                     ? {
                         ...cat,
                         risks: cat.risks.map(risk =>
-                            risk.id === riskId ? { ...risk, checked: !risk.checked } : risk
+                            risk.id === riskId
+                                ? {
+                                    ...risk,
+                                    checked: !risk.checked,
+                                    gravite: !risk.checked ? 2 : risk.gravite,
+                                    frequence: !risk.checked ? 2 : risk.frequence
+                                }
+                                : risk
                         )
                     }
                     : cat
             )
         )
+    }
+
+    const handleRiskGravite = (categoryId: string, riskId: string, gravite: number) => {
+        setRiskCategories(cats =>
+            cats.map(cat =>
+                cat.id === categoryId
+                    ? {
+                        ...cat,
+                        risks: cat.risks.map(risk =>
+                            risk.id === riskId ? { ...risk, gravite } : risk
+                        )
+                    }
+                    : cat
+            )
+        )
+    }
+
+    const handleRiskFrequence = (categoryId: string, riskId: string, frequence: number) => {
+        setRiskCategories(cats =>
+            cats.map(cat =>
+                cat.id === categoryId
+                    ? {
+                        ...cat,
+                        risks: cat.risks.map(risk =>
+                            risk.id === riskId ? { ...risk, frequence } : risk
+                        )
+                    }
+                    : cat
+            )
+        )
+    }
+
+    const handleSubmit = async () => {
+        if (!selectedEntreprise) {
+            setError("Veuillez sélectionner une entreprise")
+            return
+        }
+
+        setIsSubmitting(true)
+        setError(null)
+
+        try {
+            console.log("🚀 Début de la soumission de l'audit")
+
+            // Préparer les données documents
+            const documentsData: { [key: string]: boolean } = {}
+            documents.forEach(doc => {
+                documentsData[doc.id] = doc.checked
+            })
+            console.log("📄 Documents:", documentsData)
+
+            // Préparer les données risques
+            const risksData = riskCategories.flatMap(cat =>
+                cat.risks.map(risk => ({
+                    categorie: cat.id.toUpperCase(),
+                    nom: risk.label,
+                    identifie: risk.checked,
+                    gravite: risk.checked ? (risk.gravite || 2) : undefined,
+                    frequence: risk.checked ? (risk.frequence || 2) : undefined
+                }))
+            )
+            console.log("⚠️ Risques:", risksData.filter(r => r.identifie))
+
+            // Créer l'audit
+            console.log("📝 Appel de createAudit avec companyId:", selectedEntreprise)
+            const result = await createAudit({
+                companyId: selectedEntreprise,
+                documents: documentsData,
+                risks: risksData,
+                commentaire: commentaire || undefined
+            })
+
+            console.log("✅ Résultat:", result)
+
+            if ('error' in result) {
+                console.error("❌ Erreur retournée:", result.error)
+                setError(result.error ?? "Erreur lors de la création de l'audit")
+            } else {
+                console.log("✅ Succès! Redirection vers /auditeur/audits")
+                // Succès - rediriger vers la liste des audits
+                router.push('/auditeur/audits')
+                router.refresh()
+            }
+        } catch (err) {
+            console.error("❌ Exception capturée:", err)
+            setError("Une erreur est survenue lors de la création de l'audit")
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     const documentsChecked = documents.filter(d => d.checked).length
@@ -156,7 +261,7 @@ export function NouvelAuditClient() {
     // Calculate overall compliance score (simplified)
     const overallScore = Math.round((documentsChecked / totalDocuments) * 100)
 
-    const selectedEntrepriseData = entreprises.find(e => e.id === selectedEntreprise)
+    const selectedEntrepriseData = clients.find(c => c.id === selectedEntreprise)
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -245,8 +350,8 @@ export function NouvelAuditClient() {
                                             <SelectValue placeholder="Sélectionner une entreprise" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {entreprises.map(e => (
-                                                <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                                            {clients.map(c => (
+                                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -260,9 +365,15 @@ export function NouvelAuditClient() {
                                             </div>
                                             <div className="flex-1">
                                                 <p className="font-semibold text-slate-900">{selectedEntrepriseData.name}</p>
-                                                <p className="text-sm text-slate-600">Activité: {selectedEntrepriseData.activite}</p>
-                                                <p className="text-sm text-slate-600">Adresse: {selectedEntrepriseData.adresse}</p>
-                                                <p className="text-sm text-slate-600">Email: {selectedEntrepriseData.email}</p>
+                                                {selectedEntrepriseData.activity && (
+                                                    <p className="text-sm text-slate-600">Activité: {selectedEntrepriseData.activity}</p>
+                                                )}
+                                                {selectedEntrepriseData.address && (
+                                                    <p className="text-sm text-slate-600">Adresse: {selectedEntrepriseData.address}</p>
+                                                )}
+                                                {selectedEntrepriseData.email && (
+                                                    <p className="text-sm text-slate-600">Email: {selectedEntrepriseData.email}</p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -272,12 +383,12 @@ export function NouvelAuditClient() {
                                     <Label htmlFor="metier">Métier</Label>
                                     <Select value={selectedMetier} onValueChange={setSelectedMetier}>
                                         <SelectTrigger id="metier" className="mt-1.5">
-                                            <SelectValue placeholder="Sélectionner un métier" />
+                                            <SelectValue placeholder="Sélectionner un métier (optionnel)" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {metiers.map(m => (
-                                                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                            ))}
+                                            <SelectItem value="restauration">Restauration</SelectItem>
+                                            <SelectItem value="commerce">Commerce</SelectItem>
+                                            <SelectItem value="services">Services</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -370,7 +481,10 @@ export function NouvelAuditClient() {
                                                         <div className="mt-3 grid grid-cols-2 gap-2">
                                                             <div>
                                                                 <Label className="text-xs">Gravité (1-5)</Label>
-                                                                <Select defaultValue="2">
+                                                                <Select
+                                                                    value={String(risk.gravite || 2)}
+                                                                    onValueChange={(value) => handleRiskGravite(category.id, risk.id, parseInt(value))}
+                                                                >
                                                                     <SelectTrigger className="h-8 mt-1 text-xs">
                                                                         <SelectValue />
                                                                     </SelectTrigger>
@@ -383,7 +497,10 @@ export function NouvelAuditClient() {
                                                             </div>
                                                             <div>
                                                                 <Label className="text-xs">Fréquence (1-5)</Label>
-                                                                <Select defaultValue="2">
+                                                                <Select
+                                                                    value={String(risk.frequence || 2)}
+                                                                    onValueChange={(value) => handleRiskFrequence(category.id, risk.id, parseInt(value))}
+                                                                >
                                                                     <SelectTrigger className="h-8 mt-1 text-xs">
                                                                         <SelectValue />
                                                                     </SelectTrigger>
@@ -450,13 +567,19 @@ export function NouvelAuditClient() {
 
                 {/* Navigation Buttons */}
                 <div className="flex items-center justify-between mt-6">
+                    {error && (
+                        <div className="flex-1 mr-4">
+                            <p className="text-sm text-red-600">{error}</p>
+                        </div>
+                    )}
+
                     <Button
                         variant="ghost"
                         onClick={() => setCurrentStep(Math.max(1, currentStep - 1) as Step)}
-                        disabled={currentStep === 1}
+                        disabled={currentStep === 1 || isSubmitting}
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" />
-                        Annuler
+                        Retour
                     </Button>
 
                     <Button
@@ -465,13 +588,27 @@ export function NouvelAuditClient() {
                             if (currentStep < 4) {
                                 setCurrentStep((currentStep + 1) as Step)
                             } else {
-                                // Submit audit
-                                console.log("Submit audit")
+                                handleSubmit()
                             }
                         }}
+                        disabled={isSubmitting || (currentStep === 1 && !selectedEntreprise)}
                     >
-                        {currentStep === 4 ? "Soumettre" : "Suivant"}
-                        <ArrowRight className="h-4 w-4 ml-2" />
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Création en cours...
+                            </>
+                        ) : currentStep === 4 ? (
+                            <>
+                                <Check className="h-4 w-4 mr-2" />
+                                Finaliser l'audit
+                            </>
+                        ) : (
+                            <>
+                                Suivant
+                                <ArrowRight className="h-4 w-4 ml-2" />
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>

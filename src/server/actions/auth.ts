@@ -135,6 +135,10 @@ export async function registerAction(formData: FormData) {
             return { company, user }
         })
 
+        // Auto-generate 4 affichages obligatoires (outside transaction for non-critical)
+        const { seedAffichagesForCompany } = await import("@/lib/seed-affichages")
+        await seedAffichagesForCompany(result.company.id)
+
         // Auto sign in after registration
         await signIn("credentials", {
             email: data.email,

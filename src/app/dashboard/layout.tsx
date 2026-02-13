@@ -1,63 +1,51 @@
+import { ReactNode } from "react"
 import { requireRole } from "@/lib/auth-helpers"
-import Link from "next/link"
-import { logoutAction } from "@/server/actions/auth"
-import { Button } from "@/components/ui/button"
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
+import { DashboardLayoutShell } from "@/components/client/dashboard-layout-shell"
 
-export default async function DashboardLayout({
-    children,
-}: {
-    children: React.ReactNode
-}) {
-    // Require Client role
-    const user = await requireRole(["CLIENT"])
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+    await requireRole(["CLIENT"])
+
+    const session = await auth()
+    const user = await prisma.user.findUnique({
+        where: { email: session?.user?.email || "" },
+        include: {
+            company: {
+                include: {
+                    subscription: {
+                        include: {
+                            plan: true
+                        }
+                    }
+                }
+            }
+        }
+    })
+
+    const userName = user?.company?.name || user?.name || "Client"
+    const userPlan = user?.company?.subscription?.plan?.nom || "Essentiel"
+    const planPrice = user?.company?.subscription?.plan?.prixMensuel || 0
+
+    const navItems = [
+        { href: "/dashboard", label: "Tableau de bord", iconPath: "/assets/maquettes client/icon tableau de bord.png" },
+        { href: "/dashboard/duerp", label: "Mon DUERP", iconPath: "/assets/maquettes client/icon mon DUERP.png" },
+        { href: "/dashboard/documents", label: "Documents", iconPath: "/assets/maquettes client/icon documents.png" },
+        { href: "/dashboard/affichages", label: "Affichages", iconPath: "/assets/maquettes client/icon affichage.png" },
+        { href: "/dashboard/salaries", label: "Mes salariés", iconPath: "/assets/maquettes client/icon mes salariés.png" },
+        { href: "/dashboard/signalements", label: "Signalements", iconPath: "/assets/maquettes client/icon signalements.png" },
+        { href: "/dashboard/factures", label: "Factures", iconPath: "/assets/maquettes client/icon factures.png" },
+        { href: "/dashboard/parametres", label: "Paramètres", iconPath: "/assets/maquettes client/icon tableau de bord.png" },
+    ]
 
     return (
-        <div className="flex min-h-screen flex-col">
-            {/* Header */}
-            <header className="border-b bg-white">
-                <div className="container mx-auto flex h-16 items-center justify-between px-4">
-                    <div className="flex items-center gap-8">
-                        <h1 className="text-xl font-bold text-blue-600">ICPP</h1>
-                        <nav className="flex gap-6">
-                            <Link
-                                href="/dashboard"
-                                className="text-sm font-medium text-gray-700 hover:text-blue-600"
-                            >
-                                Accueil
-                            </Link>
-                            <Link
-                                href="/dashboard/duerp"
-                                className="text-sm font-medium text-gray-700 hover:text-blue-600"
-                            >
-                                Mon DUERP
-                            </Link>
-                            <Link
-                                href="/dashboard/documents"
-                                className="text-sm font-medium text-gray-700 hover:text-blue-600"
-                            >
-                                Documents
-                            </Link>
-                            <Link
-                                href="/dashboard/settings"
-                                className="text-sm font-medium text-gray-700 hover:text-blue-600"
-                            >
-                                Paramètres
-                            </Link>
-                        </nav>
-                    </div>
-
-                    <form action={logoutAction}>
-                        <Button variant="outline" size="sm">
-                            Déconnexion
-                        </Button>
-                    </form>
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="flex-1 bg-gray-50">
-                <div className="container mx-auto p-8">{children}</div>
-            </main>
-        </div>
+        <DashboardLayoutShell
+            userName={userName}
+            userPlan={userPlan}
+            planPrice={planPrice}
+            navItems={navItems}
+        >
+            {children}
+        </DashboardLayoutShell>
     )
 }

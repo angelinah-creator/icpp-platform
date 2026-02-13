@@ -6,7 +6,7 @@ export default async function AdminLayout({
 }: {
     children: React.ReactNode
 }) {
-    // Require Admin role only
+    // Require Admin role only - automatically blocks TECHNICIEN, AUDITOR, CLIENT
     const user = await requireRole(["ADMIN"])
 
     return (
