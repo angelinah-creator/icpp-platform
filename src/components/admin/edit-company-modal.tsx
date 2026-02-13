@@ -19,6 +19,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
+    DialogTrigger,
 } from "@/components/ui/dialog"
 import { updateCompany } from "@/server/actions/admin"
 
@@ -28,23 +29,44 @@ interface Company {
     email: string
     activite: string
     abonnement: string
+    siret?: string
+    phone?: string
+    address?: string
+    postalCode?: string
+    city?: string
+    metierCode?: string
+    employeeCount?: number
 }
 
 interface EditCompanyModalProps {
-    open: boolean
-    onOpenChange: (open: boolean) => void
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
     company: Company | null
+    plans?: Plan[]
     metiers?: { code: string; nom: string }[]
     onSuccess?: () => void
+    children?: React.ReactNode
+}
+
+interface Plan {
+    code: string
+    nom: string
+    prix: number
 }
 
 export function EditCompanyModal({
     open,
     onOpenChange,
     company,
+    plans = [],
     metiers = [],
-    onSuccess
+    onSuccess,
+    children
 }: EditCompanyModalProps) {
+    const [internalOpen, setInternalOpen] = useState(false)
+    const isControlled = open !== undefined && onOpenChange !== undefined
+    const finalOpen = isControlled ? open : internalOpen
+    const finalOnOpenChange = isControlled ? onOpenChange : setInternalOpen
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const router = useRouter()
@@ -65,14 +87,14 @@ export function EditCompanyModal({
         if (company) {
             setFormData({
                 name: company.nom || "",
-                siret: "",
+                siret: company.siret || "",
                 email: company.email || "",
-                phone: "",
-                address: "",
-                postalCode: "",
-                city: "",
-                metierCode: "",
-                employeeCount: 1
+                phone: company.phone || "",
+                address: company.address || "",
+                postalCode: company.postalCode || "",
+                city: company.city || "",
+                metierCode: company.metierCode || company.activite || "",
+                employeeCount: company.employeeCount || 1
             })
         }
     }, [company])
@@ -100,8 +122,8 @@ export function EditCompanyModal({
             if ('error' in result) {
                 setError(result.error as string)
             } else {
-                onOpenChange(false)
-                onSuccess?.()
+                if (finalOnOpenChange) finalOnOpenChange(false)
+                if (onSuccess) onSuccess()
                 router.refresh()
             }
         } catch (err) {
@@ -112,7 +134,8 @@ export function EditCompanyModal({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={finalOpen} onOpenChange={finalOnOpenChange}>
+            {children ? <DialogTrigger asChild>{children}</DialogTrigger> : null}
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
                     <DialogTitle className="text-lg font-semibold flex items-center gap-2">
@@ -242,7 +265,7 @@ export function EditCompanyModal({
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => onOpenChange(false)}
+                            onClick={() => finalOnOpenChange && finalOnOpenChange(false)}
                             disabled={isSubmitting}
                         >
                             Annuler

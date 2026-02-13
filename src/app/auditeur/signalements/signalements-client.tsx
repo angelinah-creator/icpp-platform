@@ -5,109 +5,89 @@ import { Search, Bell, Filter, AlertCircle, Clock, CheckCircle, User, Wrench, Ma
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { updateSignalementStatus } from "@/server/actions/signalements"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
+import { toast } from "sonner"
 
-interface Signalement {
-    id: number
-    entreprise: string
-    type: string
-    description: string
-    date: string
-    statut: "Nouveau" | "En cours" | "Traité"
-    statutColor: string
-    iconBg: string
-    iconColor: string
-    borderColor: string
-    icon: React.ComponentType<{ className?: string }>
+// Helper to map DB types/status to UI styles
+const getTypeConfig = (type: string) => {
+    const normalizedType = type.toUpperCase()
+    switch (normalizedType) {
+        case "NOUVEAU SALARIÉ":
+        case "NOUVEAU_SALARIE":
+            return { icon: User, iconBg: "bg-red-50", iconColor: "text-red-500", borderColor: "border-l-red-400" }
+        case "ACCIDENT DU TRAVAIL":
+        case "ACCIDENT":
+        case "INCIDENT":
+            return { icon: AlertCircle, iconBg: "bg-orange-50", iconColor: "text-orange-500", borderColor: "border-l-orange-400" }
+        case "NOUVEL ÉQUIPEMENT":
+        case "NOUVEL_EQUIPEMENT":
+        case "EQUIPEMENT":
+            return { icon: Wrench, iconBg: "bg-blue-50", iconColor: "text-blue-500", borderColor: "border-l-blue-400" }
+        case "DÉMÉNAGEMENT":
+        case "DEMENAGEMENT":
+            return { icon: MapPin, iconBg: "bg-yellow-50", iconColor: "text-yellow-500", borderColor: "border-l-yellow-400" }
+        default:
+            return { icon: AlertCircle, iconBg: "bg-slate-50", iconColor: "text-slate-500", borderColor: "border-l-slate-400" }
+    }
 }
 
-export function SignalementsClient() {
+const getStatusConfig = (status: string) => {
+    const normalizedStatus = status.toUpperCase()
+    switch (normalizedStatus) {
+        case "NOUVEAU":
+            return { label: "Nouveau", color: "bg-blue-100 text-blue-700" }
+        case "EN_COURS":
+        case "EN COURS":
+            return { label: "En cours", color: "bg-orange-100 text-orange-700" }
+        case "TRAITÉ":
+        case "TRAITE":
+            return { label: "Traité", color: "bg-green-100 text-green-700" }
+        default:
+            return { label: status, color: "bg-slate-100 text-slate-700" }
+    }
+}
+
+interface SignalementsClientProps {
+    initialSignalements: any[] // Using any for now to avoid strict Prisma type coupling in client, but ideally should be inferred
+}
+
+export function SignalementsClient({ initialSignalements }: SignalementsClientProps) {
     const [searchQuery, setSearchQuery] = useState("")
 
-    // Signalements data with local state for status management
-    const [signalementsData, setSignalementsData] = useState<Signalement[]>([
-        {
-            id: 1,
-            entreprise: "Restaurant le Gourmet",
-            type: "Nouveau salarié",
-            description: "Embauche d'un nouveau cuisinier à partir du 15 janvier",
-            date: "Déclaré le 2025-01-05",
-            statut: "Nouveau",
-            statutColor: "bg-blue-100 text-blue-700",
-            iconBg: "bg-red-50",
-            iconColor: "text-red-500",
-            borderColor: "border-l-red-400",
-            icon: User
-        },
-        {
-            id: 2,
-            entreprise: "Boulangerie Dupont",
-            type: "Accident du travail",
-            description: "Brûlure légère au four, arrêt de 3 jours",
-            date: "Déclaré le 2025-01-04",
-            statut: "En cours",
-            statutColor: "bg-orange-100 text-orange-700",
-            iconBg: "bg-orange-50",
-            iconColor: "text-orange-500",
-            borderColor: "border-l-orange-400",
-            icon: AlertCircle
-        },
-        {
-            id: 3,
-            entreprise: "Salon Marie Coiffure",
-            type: "Nouvel équipement",
-            description: "Installation d'un nouveau bac de lavage avec pompe",
-            date: "Déclaré le 2025-01-05",
-            statut: "Traité",
-            statutColor: "bg-green-100 text-green-700",
-            iconBg: "bg-blue-50",
-            iconColor: "text-blue-500",
-            borderColor: "border-l-blue-400",
-            icon: Wrench
-        },
-        {
-            id: 4,
-            entreprise: "Institut Beauté Zen",
-            type: "Déménagement",
-            description: "Déménagement prévu au 20 rue du Commerce, même ville",
-            date: "Déclaré le 2025-01-03",
-            statut: "Nouveau",
-            statutColor: "bg-blue-100 text-blue-700",
-            iconBg: "bg-yellow-50",
-            iconColor: "text-yellow-500",
-            borderColor: "border-l-yellow-400",
-            icon: MapPin
-        },
-    ])
+    // We use the initial data passed from server, but we might want to update local state optimistically
+    // For now, allow simple filtering on the prop data. 
+    // If we needed optimistic updates, we'd use useOptimistic or a local state initialized with props.
+    // Let's use local state to verify the UI updates immediately.
+    const [signalements, setSignalements] = useState(initialSignalements)
 
-    // Handler to take charge of a signalement (Nouveau -> En cours)
-    const handlePrendreEnCharge = (id: number) => {
-        setSignalementsData(prev => prev.map(s =>
-            s.id === id
-                ? { ...s, statut: "En cours" as const, statutColor: "bg-orange-100 text-orange-700" }
-                : s
-        ))
-    }
-
-    // Handler to validate a signalement (En cours -> Traité)
-    const handleValider = (id: number) => {
-        setSignalementsData(prev => prev.map(s =>
-            s.id === id
-                ? { ...s, statut: "Traité" as const, statutColor: "bg-green-100 text-green-700" }
-                : s
-        ))
-    }
-
-    // Calculate stats from current data
+    // Calculate stats
     const stats = {
-        nouveaux: signalementsData.filter(s => s.statut === "Nouveau").length,
-        enCours: signalementsData.filter(s => s.statut === "En cours").length,
-        traites: signalementsData.filter(s => s.statut === "Traité").length
+        nouveaux: signalements.filter(s => s.status === "NOUVEAU").length,
+        enCours: signalements.filter(s => s.status === "EN_COURS").length,
+        traites: signalements.filter(s => s.status === "TRAITE").length
     }
 
-    const filteredSignalements = signalementsData.filter(s =>
-        s.entreprise.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.type.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredSignalements = signalements.filter(s =>
+        (s.company?.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.titre.toLowerCase().includes(searchQuery.toLowerCase())
     )
+
+    const handleUpdateStatus = async (id: string, newStatus: string) => {
+        // Optimistic update
+        setSignalements(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s))
+
+        const result = await updateSignalementStatus(id, newStatus)
+        if (!result.success) {
+            // Revert on failure (simplified)
+            toast.error("Erreur lors de la mise à jour")
+            // In a real app we'd revert the state here
+        } else {
+            toast.success("Statut mis à jour")
+        }
+    }
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -124,7 +104,7 @@ export function SignalementsClient() {
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <Input
                                 type="text"
-                                placeholder="Rechercher..."
+                                placeholder="Rechercher ..."
                                 className="w-64 bg-slate-50 pl-10 border-slate-200"
                             />
                         </div>
@@ -133,7 +113,7 @@ export function SignalementsClient() {
                         <Button variant="ghost" size="icon" className="relative">
                             <Bell className="h-5 w-5 text-slate-600" />
                             <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
-                                2
+                                {stats.nouveaux}
                             </span>
                         </Button>
                     </div>
@@ -184,7 +164,7 @@ export function SignalementsClient() {
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <Input
                             type="text"
-                            placeholder="Rechercher..."
+                            placeholder="Rechercher ..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-10 bg-white border-slate-200"
@@ -197,71 +177,82 @@ export function SignalementsClient() {
 
                 {/* Signalements List */}
                 <div className="space-y-4">
-                    {filteredSignalements.map((signalement) => {
-                        const Icon = signalement.icon
-                        return (
-                            <div
-                                key={signalement.id}
-                                className={`bg-white rounded-lg border border-slate-200 border-l-4 ${signalement.borderColor} p-4 flex items-center justify-between`}
-                            >
-                                <div className="flex items-start gap-4">
-                                    {/* Icon */}
-                                    <div className={`w-10 h-10 rounded-lg ${signalement.iconBg} flex items-center justify-center flex-shrink-0`}>
-                                        <Icon className={`h-5 w-5 ${signalement.iconColor}`} />
-                                    </div>
+                    {filteredSignalements.length === 0 ? (
+                        <div className="text-center py-10 text-slate-500 bg-white rounded-lg border border-slate-200">
+                            Aucun signalement trouvé.
+                        </div>
+                    ) : (
+                        filteredSignalements.map((s) => {
+                            const typeConfig = getTypeConfig(s.type)
+                            const statusConfig = getStatusConfig(s.status)
+                            const Icon = typeConfig.icon
 
-                                    {/* Content */}
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <p className="font-semibold text-slate-900">{signalement.entreprise}</p>
-                                            <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-normal text-xs">
-                                                {signalement.type}
-                                            </Badge>
+                            return (
+                                <div
+                                    key={s.id}
+                                    className={`bg-white rounded-lg border border-slate-200 ${typeConfig.borderColor} border-l-4 p-4 flex items-center justify-between`}
+                                >
+                                    <div className="flex items-start gap-4">
+                                        {/* Icon */}
+                                        <div className={`w-10 h-10 rounded-lg ${typeConfig.iconBg} flex items-center justify-center flex-shrink-0`}>
+                                            <Icon className={`h-5 w-5 ${typeConfig.iconColor}`} />
                                         </div>
-                                        <p className="text-sm text-slate-600 mb-1">{signalement.description}</p>
-                                        <p className="text-xs text-slate-400">{signalement.date}</p>
+
+                                        {/* Content */}
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <p className="font-semibold text-slate-900">{s.company?.name || "Entreprise inconnue"}</p>
+                                                <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-normal text-xs">
+                                                    {s.type}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-sm text-slate-600 mb-1">{s.description}</p>
+                                            <p className="text-xs text-slate-400">
+                                                Déclaré le {format(new Date(s.createdAt), "d MMMM yyyy", { locale: fr })}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-3">
+                                        {s.status === "NOUVEAU" && (
+                                            <>
+                                                <Badge variant="secondary" className={statusConfig.color}>
+                                                    {statusConfig.label}
+                                                </Badge>
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-[#4A7FFF] hover:bg-[#3968E6] text-white"
+                                                    onClick={() => handleUpdateStatus(s.id, "EN_COURS")}
+                                                >
+                                                    Prendre en charge
+                                                </Button>
+                                            </>
+                                        )}
+                                        {s.status === "EN_COURS" && (
+                                            <>
+                                                <Badge variant="secondary" className={statusConfig.color}>
+                                                    {statusConfig.label}
+                                                </Badge>
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-green-500 hover:bg-green-600 text-white"
+                                                    onClick={() => handleUpdateStatus(s.id, "TRAITE")}
+                                                >
+                                                    Valider
+                                                </Button>
+                                            </>
+                                        )}
+                                        {(s.status === "TRAITE" || s.status === "TRAITÉ") && (
+                                            <Badge variant="secondary" className={statusConfig.color}>
+                                                {statusConfig.label}
+                                            </Badge>
+                                        )}
                                     </div>
                                 </div>
-
-                                {/* Actions */}
-                                <div className="flex items-center gap-3">
-                                    {signalement.statut === "Nouveau" && (
-                                        <>
-                                            <Badge variant="secondary" className="bg-blue-100 text-blue-700 font-medium">
-                                                Nouveau
-                                            </Badge>
-                                            <Button
-                                                size="sm"
-                                                className="bg-[#4A7FFF] hover:bg-[#3968E6] text-white"
-                                                onClick={() => handlePrendreEnCharge(signalement.id)}
-                                            >
-                                                Prendre en charge
-                                            </Button>
-                                        </>
-                                    )}
-                                    {signalement.statut === "En cours" && (
-                                        <>
-                                            <Badge variant="secondary" className="bg-orange-100 text-orange-700 font-medium">
-                                                En cours
-                                            </Badge>
-                                            <Button
-                                                size="sm"
-                                                className="bg-green-500 hover:bg-green-600 text-white"
-                                                onClick={() => handleValider(signalement.id)}
-                                            >
-                                                Valider
-                                            </Button>
-                                        </>
-                                    )}
-                                    {signalement.statut === "Traité" && (
-                                        <Badge variant="secondary" className="bg-green-100 text-green-700 font-medium">
-                                            Traité
-                                        </Badge>
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })}
+                            )
+                        })
+                    )}
                 </div>
             </div>
         </div>

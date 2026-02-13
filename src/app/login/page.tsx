@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { loginAction } from "@/server/actions/auth"
 
-type UserRole = "client" | "auditeur" | "administrateur"
+type UserRole = "client" | "auditeur" | "technicien" | "administrateur"
 
 const roleContent = {
     client: {
@@ -31,6 +31,17 @@ const roleContent = {
             "Accompagnement DUERP par des auditeurs ICPP",
             "Rappels de mise à jour",
             "Support dédié",
+        ],
+    },
+    technicien: {
+        title: "Intervenez sur le terrain",
+        subtitle:
+            "Gérez vos interventions techniques et assurez le suivi des installations. Accédez aux dossiers clients et documentez vos actions.",
+        features: [
+            "Gestion des tâches assignées",
+            "Suivi des interventions",
+            "Accès aux fiches techniques",
+            "Documentation des actions",
         ],
     },
     administrateur: {

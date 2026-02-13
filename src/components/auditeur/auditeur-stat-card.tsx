@@ -10,20 +10,20 @@ interface StatCardProps {
 
 export function AuditeurStatCard({ title, value, change, icon, highlighted = false }: StatCardProps) {
     return (
-        <div className={`rounded-lg border p-5 ${highlighted
-                ? "bg-[#F0F6E8] border-[#E5F0D8]"
-                : "bg-white border-slate-200"
+        <div className={`rounded-xl border p-5 ${highlighted
+            ? "bg-[#EFF6FF] border-blue-100"
+            : "bg-white border-slate-200"
             }`}>
             <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                    <p className="text-xs text-slate-500 mb-1">{title}</p>
+                    <p className={`text-sm font-medium mb-1 ${highlighted ? "text-slate-700" : "text-slate-500"}`}>{title}</p>
                     <p className="text-3xl font-bold text-slate-900">{value}</p>
                 </div>
-                <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${highlighted ? "bg-white" : "bg-slate-50"}`}>
                     {icon}
                 </div>
             </div>
-            <p className={`text-xs ${highlighted ? "text-green-600 font-medium" : "text-green-600"}`}>
+            <p className={`text-xs font-medium ${highlighted ? "text-blue-600" : "text-green-600"}`}>
                 {change}
             </p>
         </div>

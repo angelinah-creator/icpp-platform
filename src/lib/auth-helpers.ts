@@ -36,6 +36,8 @@ export async function requireRole(allowedRoles: string[]) {
             redirect("/admin")
         } else if (user.role === "AUDITOR" || user.role === "COMMERCIAL") {
             redirect("/auditeur")
+        } else if (user.role === "TECHNICIEN") {
+            redirect("/technicien")
         } else if (user.role === "CLIENT") {
             // Only redirect to dashboard if we are NOT already checking for CLIENT role
             // This prevents infinite loop on /dashboard since /dashboard calls requireRole(["CLIENT"])

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Search, Bell, Filter, MoreHorizontal, Download, Send, Trash2 } from "lucide-react"
+import { Search, Filter, MoreHorizontal, Download, Eye, FileText } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,206 +21,163 @@ import {
     TableRow,
 } from "@/components/ui/table"
 
-export function DuerpClient() {
+interface Duerp {
+    id: string
+    entreprise: string
+    creation: string
+    expiration: string
+    risques: string
+    statut: string
+}
+
+function getStatutBadge(statut: string) {
+    switch (statut) {
+        case "Signé":
+            return <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-0">{statut}</Badge>
+        case "En cours":
+            return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-0">{statut}</Badge>
+        case "En attente":
+            return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-0">{statut}</Badge>
+        default:
+            return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-0">{statut}</Badge>
+    }
+}
+
+export function DuerpClient({ initialDuerps }: { initialDuerps: Duerp[] }) {
     const [searchQuery, setSearchQuery] = useState("")
+    const [statusFilter, setStatusFilter] = useState<string>("all")
 
-    // Mock data matching the mockup
-    const duerps = [
-        {
-            id: 1,
-            entreprise: "Salon Marie Coiffure",
-            creation: "2023-03-15",
-            expiration: "2024-03-15",
-            risques: 4,
-            statut: "Signé",
-            statutColor: "bg-green-100 text-green-700"
-        },
-        {
-            id: 2,
-            entreprise: "Restaurant Le Gourmet",
-            creation: "2023-06-01",
-            expiration: "2024-06-01",
-            risques: 5,
-            statut: "En attente",
-            statutColor: "bg-orange-100 text-orange-700"
-        },
-        {
-            id: 3,
-            entreprise: "Boulangerie Dupont",
-            creation: "2023-06-01",
-            expiration: "2024-06-01",
-            risques: 4,
-            statut: "En cours",
-            statutColor: "bg-blue-100 text-blue-700"
-        },
-        {
-            id: 4,
-            entreprise: "Salon Marie Coiffure",
-            creation: "2023-03-15",
-            expiration: "2024-03-15",
-            risques: 3,
-            statut: "Signé",
-            statutColor: "bg-green-100 text-green-700"
-        },
-        {
-            id: 5,
-            entreprise: "Restaurant Le Gourmet",
-            creation: "2023-06-01",
-            expiration: "2024-06-01",
-            risques: 3,
-            statut: "En attente",
-            statutColor: "bg-orange-100 text-orange-700"
-        },
-        {
-            id: 6,
-            entreprise: "Boulangerie Dupont",
-            creation: "2023-06-01",
-            expiration: "2024-06-01",
-            risques: 5,
-            statut: "En cours",
-            statutColor: "bg-blue-100 text-blue-700"
-        },
-        {
-            id: 7,
-            entreprise: "Salon Marie Coiffure",
-            creation: "2023-03-15",
-            expiration: "2024-03-15",
-            risques: 4,
-            statut: "Signé",
-            statutColor: "bg-green-100 text-green-700"
-        },
-        {
-            id: 8,
-            entreprise: "Restaurant Le Gourmet",
-            creation: "2023-06-01",
-            expiration: "2024-06-01",
-            risques: 4,
-            statut: "En attente",
-            statutColor: "bg-orange-100 text-orange-700"
-        },
-    ]
-
-    const filteredDuerps = duerps.filter(duerp =>
-        duerp.entreprise.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const filteredDuerps = initialDuerps.filter((duerp) => {
+        const matchesSearch = duerp.entreprise
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
+        const matchesStatus =
+            statusFilter === "all" ||
+            duerp.statut.toLowerCase() === statusFilter.toLowerCase()
+        return matchesSearch && matchesStatus
+    })
 
     return (
         <div className="min-h-screen bg-slate-50">
-            {/* Header */}
             <header className="bg-white border-b border-slate-200 px-8 py-4">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">Liste des DUERP</h1>
-                        <p className="text-sm text-slate-500">Consultez et téléchargez les Documents Uniques</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        {/* Search */}
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <Input
-                                type="text"
-                                placeholder="Rechercher..."
-                                className="w-64 bg-slate-50 pl-10 border-slate-200"
-                            />
-                        </div>
-
-                        {/* Notifications */}
-                        <Button variant="ghost" size="icon" className="relative">
-                            <Bell className="h-5 w-5 text-slate-600" />
-                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
-                                2
-                            </span>
-                        </Button>
+                        <p className="text-sm text-slate-500">
+                            Consultez et signez les Documents Uniques — {initialDuerps.length} document{initialDuerps.length > 1 ? "s" : ""}
+                        </p>
                     </div>
                 </div>
             </header>
 
-            {/* Main Content */}
             <div className="p-8">
-                {/* Search and Filter Bar */}
                 <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-4">
                         <div className="relative flex-1 max-w-md">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <Input
                                 type="text"
-                                placeholder="Rechercher par entreprise ou commercial..."
+                                placeholder="Rechercher par entreprise..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-10 bg-white border-slate-200"
                             />
                         </div>
-                        <Button variant="outline" className="border-slate-300">
-                            <Filter className="h-4 w-4 mr-2" />
-                            Tous les statuts
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="border-slate-300">
+                                    <Filter className="h-4 w-4 mr-2" />
+                                    {statusFilter === "all" ? "Tous les statuts" : statusFilter}
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onClick={() => setStatusFilter("all")}>Tous</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setStatusFilter("Signé")}>Signé</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setStatusFilter("En cours")}>En cours</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setStatusFilter("En attente")}>En attente</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
-                {/* DUERP Table */}
                 <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-slate-50 hover:bg-slate-50">
                                 <TableHead className="font-semibold text-slate-900">Entreprise</TableHead>
                                 <TableHead className="font-semibold text-slate-900">Création</TableHead>
-                                <TableHead className="font-semibold text-slate-900">Expiration</TableHead>
-                                <TableHead className="font-semibold text-slate-900">Risques identifiés</TableHead>
+                                <TableHead className="font-semibold text-slate-900">Prochaine révision</TableHead>
+                                <TableHead className="font-semibold text-slate-900">Risques</TableHead>
                                 <TableHead className="font-semibold text-slate-900">Statut</TableHead>
                                 <TableHead className="font-semibold text-slate-900">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredDuerps.map((duerp) => (
-                                <TableRow key={duerp.id}>
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                                                <span className="text-xs font-medium text-blue-600">
-                                                    {duerp.entreprise.charAt(0)}
-                                                </span>
-                                            </div>
-                                            <span className="font-medium text-slate-900">{duerp.entreprise}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-slate-600">{duerp.creation}</TableCell>
-                                    <TableCell className="text-slate-600">{duerp.expiration}</TableCell>
-                                    <TableCell className="text-slate-600">{duerp.risques} risques</TableCell>
-                                    <TableCell>
-                                        <Badge variant="secondary" className={`${duerp.statutColor} border-0 font-medium`}>
-                                            {duerp.statut}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem asChild>
-                                                    <Link href={`/auditeur/duerp/${duerp.id}`}>
-                                                        Voir détails
-                                                    </Link>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => alert('Téléchargement du PDF en cours...')}>
-                                                    <Download className="h-4 w-4 mr-2" />
-                                                    Télécharger PDF
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => alert('Email de signature envoyé !')}>
-                                                    <Send className="h-4 w-4 mr-2" />
-                                                    Envoyer pour signature
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-red-600" onClick={() => alert('Suppression annulée - fonctionnalité à implémenter')}>
-                                                    <Trash2 className="h-4 w-4 mr-2" />
-                                                    Supprimer
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                            {filteredDuerps.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-8">
+                                        <FileText className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                                        <p className="text-slate-500">Aucun DUERP trouvé</p>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            ) : (
+                                filteredDuerps.map((duerp) => (
+                                    <TableRow key={duerp.id} className="hover:bg-slate-50">
+                                        <TableCell>
+                                            <Link
+                                                href={`/auditeur/duerp/${duerp.id}`}
+                                                className="flex items-center gap-3 hover:underline"
+                                            >
+                                                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                                                    <span className="text-xs font-medium text-blue-600">
+                                                        {duerp.entreprise.charAt(0)}
+                                                    </span>
+                                                </div>
+                                                <span className="font-medium text-slate-900">
+                                                    {duerp.entreprise}
+                                                </span>
+                                            </Link>
+                                        </TableCell>
+                                        <TableCell className="text-slate-600">
+                                            {new Date(duerp.creation).toLocaleDateString("fr-FR")}
+                                        </TableCell>
+                                        <TableCell className="text-slate-600">
+                                            {duerp.expiration !== "Non défini"
+                                                ? new Date(duerp.expiration).toLocaleDateString("fr-FR")
+                                                : "Non défini"}
+                                        </TableCell>
+                                        <TableCell className="text-slate-600">{duerp.risques}</TableCell>
+                                        <TableCell>{getStatutBadge(duerp.statut)}</TableCell>
+                                        <TableCell>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/auditeur/duerp/${duerp.id}`}>
+                                                            <Eye className="h-4 w-4 mr-2" />
+                                                            Voir détails / Signer
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem asChild>
+                                                        <a
+                                                            href={`/api/duerp/${duerp.id}/pdf`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            <Download className="h-4 w-4 mr-2" />
+                                                            Télécharger PDF
+                                                        </a>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </div>

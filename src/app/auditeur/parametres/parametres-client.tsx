@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { updateUserProfile } from "@/server/actions/profile"
+import { toast } from "sonner"
 
 type Tab = "profil" | "notifications" | "securite"
 
@@ -14,18 +16,20 @@ interface UserProfile {
     nom: string
     telephone: string
     email: string
+    role?: string
+    image?: string | null
 }
 
-export function ParametresClient() {
+interface ParametresClientProps {
+    user: UserProfile
+}
+
+export function ParametresClient({ user }: ParametresClientProps) {
     const [activeTab, setActiveTab] = useState<Tab>("profil")
 
     // Profil state
-    const [profile, setProfile] = useState<UserProfile>({
-        prenom: "Pierre",
-        nom: "Durand",
-        telephone: "01 23 45 67 89",
-        email: "pierre.durand@icpp.fr"
-    })
+    const [profile, setProfile] = useState<UserProfile>(user)
+    const [isSaving, setIsSaving] = useState(false)
 
     // Notifications state
     const [notifications, setNotifications] = useState({
@@ -41,6 +45,22 @@ export function ParametresClient() {
         nouveau: "",
         confirmer: ""
     })
+
+    const handleSaveProfile = async () => {
+        setIsSaving(true)
+        const result = await updateUserProfile({
+            prenom: profile.prenom,
+            nom: profile.nom,
+            telephone: profile.telephone
+        })
+
+        if (result.success) {
+            toast.success("Profil mis à jour avec succès")
+        } else {
+            toast.error("Erreur lors de la mise à jour du profil")
+        }
+        setIsSaving(false)
+    }
 
     const tabs = [
         { id: "profil" as Tab, label: "Profil", icon: User },
@@ -115,7 +135,7 @@ export function ParametresClient() {
                                 </div>
                                 <div>
                                     <p className="font-semibold text-slate-900">{profile.prenom} {profile.nom}</p>
-                                    <p className="text-sm text-slate-500">Auditeur ICPP</p>
+                                    <p className="text-sm text-slate-500">{profile.role === "AUDITOR" ? "Auditeur ICPP" : profile.role}</p>
                                 </div>
                             </div>
 
@@ -149,18 +169,20 @@ export function ParametresClient() {
                                     <Label className="text-slate-700 mb-2 block">Email</Label>
                                     <Input
                                         value={profile.email}
-                                        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                                        className="bg-slate-50 border-slate-200"
+                                        disabled
+                                        className="bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed"
+                                        title="L'email ne peut pas être modifié"
                                     />
                                 </div>
                             </div>
 
                             <Button
                                 className="bg-[#4A7FFF] hover:bg-[#3968E6] text-white"
-                                onClick={() => alert('Profil mis à jour avec succès !')}
+                                onClick={handleSaveProfile}
+                                disabled={isSaving}
                             >
                                 <Save className="h-4 w-4 mr-2" />
-                                Enregistrer les modifications
+                                {isSaving ? "Enregistrement..." : "Enregistrer les modifications"}
                             </Button>
                         </div>
                     )}
@@ -222,7 +244,7 @@ export function ParametresClient() {
 
                             <Button
                                 className="bg-[#4A7FFF] hover:bg-[#3968E6] text-white"
-                                onClick={() => alert('Préférences de notification mises à jour !')}
+                                onClick={() => toast.success("Préférences de notification mises à jour !")}
                             >
                                 <Save className="h-4 w-4 mr-2" />
                                 Enregistrer les modifications
@@ -269,15 +291,15 @@ export function ParametresClient() {
                                 className="bg-[#4A7FFF] hover:bg-[#3968E6] text-white"
                                 onClick={() => {
                                     if (passwords.nouveau !== passwords.confirmer) {
-                                        alert('Les mots de passe ne correspondent pas !');
-                                        return;
+                                        toast.error("Les mots de passe ne correspondent pas !")
+                                        return
                                     }
                                     if (!passwords.actuel || !passwords.nouveau) {
-                                        alert('Veuillez remplir tous les champs');
-                                        return;
+                                        toast.error("Veuillez remplir tous les champs")
+                                        return
                                     }
-                                    alert('Mot de passe modifié avec succès !');
-                                    setPasswords({ actuel: '', nouveau: '', confirmer: '' });
+                                    toast.success("Mot de passe modifié avec succès !")
+                                    setPasswords({ actuel: '', nouveau: '', confirmer: '' })
                                 }}
                             >
                                 <Save className="h-4 w-4 mr-2" />

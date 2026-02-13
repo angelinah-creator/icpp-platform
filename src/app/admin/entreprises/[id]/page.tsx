@@ -2,37 +2,65 @@ import { notFound } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { EntrepriseDetailClient } from "./entreprise-detail-client"
 
-export default async function EntrepriseDetailPage({ params }: { params: { id: string } }) {
-    const company = await prisma.company.findUnique({
-        where: { id: params.id },
-        include: {
-            metier: true,
-            subscription: {
-                include: { plan: true }
-            },
-            duerps: {
-                orderBy: { createdAt: "desc" },
-                take: 5
-            },
-            users: {
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    role: true
-                }
-            },
-            _count: {
-                select: {
-                    duerps: true
+export default async function EntrepriseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params
+    const [company, plans, metiers] = await Promise.all([
+        prisma.company.findUnique({
+            where: { id },
+            include: {
+                metier: true,
+                subscription: {
+                    include: { plan: true }
+                },
+                duerps: {
+                    orderBy: { createdAt: "desc" as const },
+                    take: 5
+                },
+                users: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true
+                    }
+                },
+                _count: {
+                    select: {
+                        duerps: true
+                    }
                 }
             }
-        }
-    })
+        }),
+        prisma.planTarifaire.findMany({
+            where: { isActive: true },
+            orderBy: { prixMensuel: "asc" as const }
+        }),
+        prisma.metierICPP.findMany({
+            where: { isActive: true },
+            orderBy: { nom: "asc" as const }
+        })
+    ])
 
     if (!company) {
         notFound()
     }
 
-    return <EntrepriseDetailClient company={company} />
+    const plansData = plans.map((p: { code: string; nom: string; prixMensuel: number }) => ({
+        code: p.code,
+        nom: p.nom,
+        prix: p.prixMensuel / 100
+    }))
+
+    const metiersData = metiers.map((m: { code: string; nom: string }) => ({
+        code: m.code,
+        nom: m.nom
+    }))
+
+    return (
+        <EntrepriseDetailClient
+            company={company}
+            plans={plansData}
+            metiers={metiersData}
+        />
+    )
 }

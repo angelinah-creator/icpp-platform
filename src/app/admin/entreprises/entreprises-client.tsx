@@ -214,82 +214,71 @@ export function EntreprisesClient({ initialCompanies, plans, metiers }: Entrepri
             {/* Table */}
             <div className="bg-white rounded-lg border shadow-sm">
                 <Table>
-                    <TableHeader>
-                        <TableRow className="bg-white border-b">
-                            <TableHead className="font-medium text-slate-600">Entreprises</TableHead>
-                            <TableHead className="font-medium text-slate-600">Activité</TableHead>
-                            <TableHead className="font-medium text-slate-600">Abonnement</TableHead>
-                            <TableHead className="font-medium text-slate-600">Statut conformité</TableHead>
-                            <TableHead className="font-medium text-slate-600">DUERP</TableHead>
-                            <TableHead className="font-medium text-slate-600 text-right">Actions</TableHead>
+                    <TableHeader className="bg-slate-50/50">
+                        <TableRow>
+                            <TableHead className="w-[300px] font-semibold text-slate-900">Entreprises</TableHead>
+                            <TableHead className="font-semibold text-slate-900">Activité</TableHead>
+                            <TableHead className="font-semibold text-slate-900">Abonnement</TableHead>
+                            <TableHead className="font-semibold text-slate-900">Statut conformité</TableHead>
+                            <TableHead className="font-semibold text-slate-900">DUERP</TableHead>
+                            <TableHead className="text-right font-semibold text-slate-900">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredCompanies.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                                    {searchQuery ? "Aucune entreprise trouvée" : "Aucune entreprise enregistrée"}
+                        {filteredCompanies.map((company) => (
+                            <TableRow key={company.id} className="hover:bg-slate-50/50">
+                                <TableCell>
+                                    <div>
+                                        <div className="font-medium text-slate-900">{company.nom}</div>
+                                        <div className="text-xs text-slate-500">{company.email}</div>
+                                    </div>
                                 </TableCell>
-                            </TableRow>
-                        ) : (
-                            filteredCompanies.map((entreprise) => (
-                                <TableRow key={entreprise.id} className="hover:bg-slate-50 border-b">
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                                                <Image
-                                                    src="/assets/images/community-line.png"
-                                                    alt=""
-                                                    width={16}
-                                                    height={16}
-                                                    className="object-contain"
-                                                />
+                                <TableCell className="text-slate-600">{company.activite}</TableCell>
+                                <TableCell>
+                                    <span className="font-medium text-slate-900">{company.abonnement}</span>
+                                </TableCell>
+                                <TableCell>
+                                    {getStatutConformiteBadge(company.statutConformite)}
+                                </TableCell>
+                                <TableCell>
+                                    {getDuerpBadge(company.duerp)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <MoreHorizontal className="h-4 w-4 text-slate-500" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem asChild>
+                                                <Link href={`/admin/entreprises/${company.id}`} className="flex items-center gap-2 cursor-pointer">
+                                                    <Eye className="h-4 w-4" />
+                                                    Voir le dossier
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <div onClick={(e) => e.stopPropagation()}>
+                                                <EditCompanyModal company={company} plans={plans} metiers={metiers}>
+                                                    <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 gap-2 w-full">
+                                                        <Edit className="h-4 w-4" />
+                                                        Modifier
+                                                    </div>
+                                                </EditCompanyModal>
                                             </div>
-                                            <div>
-                                                <p className="font-medium text-slate-900">{entreprise.nom}</p>
-                                                <p className="text-xs text-slate-500">{entreprise.email}</p>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-slate-600">{entreprise.activite}</TableCell>
-                                    <TableCell>
-                                        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 font-normal border-0">
-                                            {entreprise.abonnement}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>{getStatutConformiteBadge(entreprise.statutConformite)}</TableCell>
-                                    <TableCell>{getDuerpBadge(entreprise.duerp)}</TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem asChild>
-                                                    <Link href={`/admin/entreprises/${entreprise.id}`}>
-                                                        <Eye className="h-4 w-4 mr-2" />
-                                                        Voir fiche
-                                                    </Link>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleEdit(entreprise)}>
-                                                    <Edit className="h-4 w-4 mr-2" />
-                                                    Modifier
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    className="text-red-600"
-                                                    onClick={() => handleDeleteClick(entreprise.id)}
-                                                >
-                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                            <div onClick={(e) => {
+                                                e.stopPropagation()
+                                                setCompanyToDelete(company.id)
+                                            }}>
+                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600 cursor-pointer flex items-center gap-2">
+                                                    <Trash2 className="h-4 w-4" />
                                                     Supprimer
                                                 </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
+                                            </div>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
                     </TableBody>
                 </Table>
             </div>

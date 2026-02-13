@@ -12,7 +12,6 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { AuditeurStatCard } from "@/components/auditeur/auditeur-stat-card"
-import { NotificationsPanel } from "@/components/auditeur/notifications-panel"
 
 
 interface DashboardData {
@@ -41,11 +40,31 @@ interface DashboardData {
     }>
 }
 
-interface AuditeurDashboardClientProps {
-    data: DashboardData
+interface Tache {
+    id: string
+    companyName: string
+    task: string
+    date: string
+    status: string
+    statusColor: string
 }
 
-export function AuditeurDashboardClient({ data }: AuditeurDashboardClientProps) {
+interface Signalement {
+    id: string
+    companyName: string
+    type: string
+    date: string
+    status: string
+    statusColor: string
+}
+
+interface AuditeurDashboardClientProps {
+    data: DashboardData
+    taches: Tache[]
+    signalements: Signalement[]
+}
+
+export function AuditeurDashboardClient({ data, taches, signalements }: AuditeurDashboardClientProps) {
     const [notificationsOpen, setNotificationsOpen] = useState(false)
 
     // Mock notifications for display (matching mockup 2)
@@ -57,19 +76,6 @@ export function AuditeurDashboardClient({ data }: AuditeurDashboardClientProps) 
     ]
 
     const unreadCount = notifications.filter(n => n.unread).length
-
-    // Mock data for tâches prioritaires
-    const tachesPrioritaires = [
-        { id: 1, name: "Salon Marie Coiffure", task: "Mise à jour DUERP", date: "2024-01-01", status: "FINALISÉ", statusColor: "bg-green-100 text-green-700" },
-        { id: 2, name: "Restaurant le Gourmet", task: "Mise à jour DUERP", date: "2024-01-01", status: "MISSING", statusColor: "bg-orange-100 text-orange-700" },
-        { id: 3, name: "Boulangerie Dupont", task: "Signalement à traiter", date: "2024-01-01", status: "URGENT", statusColor: "bg-red-100 text-red-700" },
-    ]
-
-    // Mock signalements récents
-    const signalementsRecents = [
-        { id: 1, name: "Salon Marie Coiffure", type: "Nouveau salarié", date: "2024-01-01", status: "NOUVEAU", statusColor: "bg-red-100 text-red-700" },
-        { id: 2, name: "Boulangerie Dupont", type: "Accident du travail", date: "2024-01-01", status: "En cours", statusColor: "bg-orange-100 text-orange-700" },
-    ]
 
     const stats = data?.stats || { clientsAssignes: 5, auditsEnCours: 1, duerpAValider: 4 }
     const userName = data?.user?.name || "John Doe"
@@ -151,7 +157,8 @@ export function AuditeurDashboardClient({ data }: AuditeurDashboardClientProps) 
                         title="Entreprises assignées"
                         value={stats.clientsAssignes}
                         change="+2% vs mois dernier"
-                        icon={<Building2 className="h-5 w-5 text-slate-400" />}
+                        icon={<Building2 className="h-5 w-5 text-blue-600" />}
+                        highlighted
                     />
                     <AuditeurStatCard
                         title="Audits en cours"
@@ -170,7 +177,6 @@ export function AuditeurDashboardClient({ data }: AuditeurDashboardClientProps) 
                         value={stats.duerpAValider}
                         change="+2% vs mois dernier"
                         icon={<FileText className="h-5 w-5 text-slate-400" />}
-                        highlighted
                     />
                 </div>
 
@@ -198,18 +204,16 @@ export function AuditeurDashboardClient({ data }: AuditeurDashboardClientProps) 
                         <Link href="/auditeur/taches" className="text-sm text-slate-600 hover:text-slate-800">Voir tous</Link>
                     </div>
                     <div className="space-y-0 divide-y divide-slate-100">
-                        {tachesPrioritaires.map((tache) => (
+                        {taches.length > 0 ? taches.map((tache) => (
                             <div key={tache.id} className="flex items-center justify-between py-4 first:pt-0">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tache.status === "FINALISÉ" ? "bg-orange-50" :
-                                        tache.status === "URGENT" ? "bg-red-50" : "bg-blue-50"
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tache.status === "URGENT" ? "bg-red-50" : "bg-orange-50"
                                         }`}>
-                                        <Building2 className={`h-5 w-5 ${tache.status === "FINALISÉ" ? "text-orange-500" :
-                                            tache.status === "URGENT" ? "text-red-500" : "text-blue-500"
+                                        <Building2 className={`h-5 w-5 ${tache.status === "URGENT" ? "text-red-500" : "text-orange-500"
                                             }`} />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-slate-900">{tache.name}</p>
+                                        <p className="text-sm font-medium text-slate-900">{tache.companyName}</p>
                                         <p className="text-xs text-slate-500">{tache.task}</p>
                                     </div>
                                 </div>
@@ -220,7 +224,9 @@ export function AuditeurDashboardClient({ data }: AuditeurDashboardClientProps) 
                                     </Badge>
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <p className="text-sm text-slate-500 py-4">Aucune tâche prioritaire</p>
+                        )}
                     </div>
                 </div>
 
@@ -231,14 +237,14 @@ export function AuditeurDashboardClient({ data }: AuditeurDashboardClientProps) 
                         <Link href="/auditeur/signalements" className="text-sm text-slate-600 hover:text-slate-800">Voir tous</Link>
                     </div>
                     <div className="space-y-0 divide-y divide-slate-100">
-                        {signalementsRecents.map((signalement) => (
+                        {signalements.length > 0 ? signalements.map((signalement) => (
                             <div key={signalement.id} className="flex items-center justify-between py-4 first:pt-0">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
                                         <AlertCircle className="h-5 w-5 text-red-500" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-slate-900">{signalement.name}</p>
+                                        <p className="text-sm font-medium text-slate-900">{signalement.companyName}</p>
                                         <p className="text-xs text-slate-500">{signalement.type}</p>
                                     </div>
                                 </div>
@@ -252,16 +258,12 @@ export function AuditeurDashboardClient({ data }: AuditeurDashboardClientProps) 
                                     </Link>
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <p className="text-sm text-slate-500 py-4">Aucun signalement récent</p>
+                        )}
                     </div>
                 </div>
             </div>
-
-            {/* Notifications Panel */}
-            <NotificationsPanel
-                isOpen={notificationsOpen}
-                onClose={() => setNotificationsOpen(false)}
-            />
         </div>
     )
 }

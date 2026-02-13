@@ -175,80 +175,44 @@ export function AuditeursClient({ initialAuditors }: AuditeursClientProps) {
             {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Gestion des auditeurs / commerciaux</h1>
-                    <p className="text-sm text-slate-500 mt-1">
-                        {initialAuditors.length} compte{initialAuditors.length > 1 ? "s" : ""} •
-                        <span className="text-purple-600 ml-1">{auditeurCount} auditeur{auditeurCount > 1 ? "s" : ""}</span> •
-                        <span className="text-blue-600 ml-1">{commercialCount} commercial{commercialCount > 1 ? "s" : ""}</span>
-                        {inactiveCount > 0 && <span className="text-gray-500 ml-1"> • {inactiveCount} inactif{inactiveCount > 1 ? "s" : ""}</span>}
+                    <h1 className="text-2xl font-bold text-slate-900">Gestion des auditeurs ICPP</h1>
+                    <p className="text-slate-500 mt-1">
+                        {initialAuditors.length} auditeurs enregistrés
                     </p>
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-4">
-                <div className="bg-white rounded-lg border p-4 flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
-                        <UserCog className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <div>
-                        <p className="text-2xl font-semibold text-slate-900">{auditeurCount}</p>
-                        <p className="text-sm text-slate-500">Auditeurs actifs</p>
-                    </div>
-                </div>
-                <div className="bg-white rounded-lg border p-4 flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                        <Briefcase className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div>
-                        <p className="text-2xl font-semibold text-slate-900">{commercialCount}</p>
-                        <p className="text-sm text-slate-500">Commerciaux actifs</p>
-                    </div>
-                </div>
-                <div className="bg-white rounded-lg border p-4 flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-                        <Check className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div>
-                        <p className="text-2xl font-semibold text-slate-900">
-                            {initialAuditors.reduce((sum, a) => sum + a.auditsCount, 0)}
-                        </p>
-                        <p className="text-sm text-slate-500">Audits assignés</p>
-                    </div>
-                </div>
-            </div>
-
             {/* Search and Filters */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between bg-white/50 p-1 rounded-lg">
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input
-                            placeholder="Rechercher par nom ou email..."
-                            className="pl-10 w-72 bg-white"
+                            placeholder="Rechercher un auditeur..."
+                            className="pl-10 w-[300px] bg-slate-50 border-slate-200"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Select value={roleFilter} onValueChange={setRoleFilter}>
-                        <SelectTrigger className="w-44 bg-white">
-                            <Filter className="h-4 w-4 mr-2 text-slate-400" />
-                            <SelectValue placeholder="Filtrer par rôle" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Tous les rôles</SelectItem>
-                            <SelectItem value="AUDITOR">Auditeurs</SelectItem>
-                            <SelectItem value="COMMERCIAL">Commerciaux</SelectItem>
-                            <SelectItem value="INACTIVE">Inactifs</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon" className="bg-white border-slate-200">
+                                <Filter className="h-4 w-4 text-slate-500" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                            <DropdownMenuItem onClick={() => setRoleFilter("all")}>Tous</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setRoleFilter("AUDITOR")}>Auditeurs</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setRoleFilter("COMMERCIAL")}>Commerciaux</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
                 <Button
-                    className="bg-gradient-to-r from-[#2048BF] to-[#679CFF] hover:opacity-90"
+                    className="bg-[#2563EB] hover:bg-[#1d4ed8]"
                     onClick={() => setIsAddModalOpen(true)}
                 >
                     <Plus className="h-4 w-4 mr-2" />
-                    Nouveau compte
+                    Nouvel auditeur
                 </Button>
             </div>
 
@@ -256,74 +220,70 @@ export function AuditeursClient({ initialAuditors }: AuditeursClientProps) {
             <div className="bg-white rounded-lg border shadow-sm">
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-slate-50 border-b">
-                            <TableHead className="font-medium text-slate-600">Nom</TableHead>
-                            <TableHead className="font-medium text-slate-600">Email</TableHead>
-                            <TableHead className="font-medium text-slate-600">Rôle</TableHead>
-                            <TableHead className="font-medium text-slate-600">Statut</TableHead>
-                            <TableHead className="font-medium text-slate-600">Date création</TableHead>
-                            <TableHead className="font-medium text-slate-600">Audits</TableHead>
-                            <TableHead className="font-medium text-slate-600 text-right">Actions</TableHead>
+                        <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                            <TableHead className="font-semibold text-slate-900 w-[300px]">Auditeur</TableHead>
+                            <TableHead className="font-semibold text-slate-900">Email</TableHead>
+                            <TableHead className="font-semibold text-slate-900">Date de création</TableHead>
+                            <TableHead className="font-semibold text-slate-900 text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredAuditors.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-12 text-slate-500">
-                                    {searchQuery || roleFilter !== "all"
+                                <TableCell colSpan={4} className="text-center py-12 text-slate-500">
+                                    {searchQuery
                                         ? "Aucun résultat trouvé"
-                                        : "Aucun auditeur ou commercial enregistré"
+                                        : "Aucun auditeur enregistré"
                                     }
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredAuditors.map((auditeur) => (
-                                <TableRow key={auditeur.id} className="hover:bg-slate-50 border-b">
+                                <TableRow key={auditeur.id} className="hover:bg-slate-50/50">
                                     <TableCell>
                                         <div className="flex items-center gap-3">
-                                            <div className={`h-9 w-9 rounded-full flex items-center justify-center ${auditeur.role === "COMMERCIAL"
-                                                    ? "bg-blue-100"
-                                                    : "bg-purple-100"
+                                            <div className={`h-8 w-8 rounded-full flex items-center justify-center ${auditeur.role === "COMMERCIAL"
+                                                ? "bg-blue-100"
+                                                : "bg-blue-100"
                                                 }`}>
-                                                <span className={`text-sm font-medium ${auditeur.role === "COMMERCIAL"
-                                                        ? "text-blue-600"
-                                                        : "text-purple-600"
-                                                    }`}>
-                                                    {auditeur.nom.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
-                                                </span>
+                                                <UserCog className={`h-4 w-4 ${auditeur.role === "COMMERCIAL"
+                                                    ? "text-blue-600"
+                                                    : "text-blue-600"
+                                                    }`} />
                                             </div>
                                             <span className="font-medium text-slate-900">{auditeur.nom}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-slate-600">{auditeur.email}</TableCell>
-                                    <TableCell>{getRoleBadge(auditeur.role)}</TableCell>
-                                    <TableCell>{getStatusBadge(auditeur.role)}</TableCell>
-                                    <TableCell className="text-slate-600">{auditeur.dateCreation}</TableCell>
-                                    <TableCell>
-                                        <span className="font-medium">{auditeur.auditsCount}</span>
+                                    <TableCell className="text-slate-900 font-medium">
+                                        {new Date(auditeur.dateCreation).toLocaleDateString("fr-FR", {
+                                            year: "numeric",
+                                            month: "2-digit",
+                                            day: "2-digit"
+                                        })}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <MoreHorizontal className="h-4 w-4" />
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100">
+                                                    <MoreHorizontal className="h-4 w-4 text-slate-500" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleEdit(auditeur)}>
+                                                <DropdownMenuItem onClick={() => handleEdit(auditeur)} className="cursor-pointer">
                                                     <Edit className="h-4 w-4 mr-2" />
                                                     Modifier
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     onClick={() => handleToggleStatus(auditeur.id)}
                                                     disabled={togglingId === auditeur.id}
-                                                    className={auditeur.role !== "INACTIVE" ? "text-orange-600" : "text-green-600"}
+                                                    className={`cursor-pointer ${auditeur.role !== "INACTIVE" ? "text-orange-600" : "text-green-600"}`}
                                                 >
                                                     <Power className="h-4 w-4 mr-2" />
                                                     {auditeur.role !== "INACTIVE" ? "Désactiver" : "Activer"}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className="text-red-600"
+                                                    className="text-red-600 cursor-pointer"
                                                     onClick={() => handleDeleteClick(auditeur.id)}
                                                 >
                                                     <Trash2 className="h-4 w-4 mr-2" />

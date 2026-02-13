@@ -3,38 +3,65 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Calendar, FileText, Users, Edit, Trash2 } from "lucide-react"
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Calendar, FileText, Users, Edit, Trash2, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { deleteCompany } from "@/server/actions/admin"
+import { EditCompanyModal } from "@/components/admin/edit-company-modal"
+
+interface Plan {
+    code: string
+    nom: string
+    prix: number
+}
+
+interface Metier {
+    code: string
+    nom: string
+}
 
 interface EntrepriseDetailClientProps {
     company: any
+    plans: Plan[]
+    metiers: Metier[]
 }
 
-export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps) {
+export function EntrepriseDetailClient({ company, plans, metiers }: EntrepriseDetailClientProps) {
     const router = useRouter()
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [editModalOpen, setEditModalOpen] = useState(false)
+    const [showToast, setShowToast] = useState(false)
+    const [toastMessage, setToastMessage] = useState("")
+
+    function toast(message: string) {
+        setToastMessage(message)
+        setShowToast(true)
+        setTimeout(() => setShowToast(false), 3000)
+    }
+
+    const editCompanyData = {
+        id: company.id,
+        nom: company.name,
+        email: company.email || "",
+        activite: company.metier?.code || "",
+        abonnement: company.subscription?.plan?.code || "",
+        siret: company.siret || "",
+        phone: company.phone || "",
+        address: company.address || "",
+        postalCode: company.postalCode || "",
+        city: company.city || "",
+        metierCode: company.metier?.code || "",
+        employeeCount: company.employeeCount || 1
+    }
 
     async function handleDelete() {
         setIsDeleting(true)
@@ -46,7 +73,7 @@ export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps)
                 router.push("/admin/entreprises")
                 router.refresh()
             }
-        } catch (error) {
+        } catch {
             alert("Erreur lors de la suppression")
         } finally {
             setIsDeleting(false)
@@ -54,8 +81,13 @@ export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps)
         }
     }
 
+    function handleEditSuccess() {
+        toast("Entreprise modifiée avec succès")
+        router.refresh()
+    }
+
     return (
-        <div className="space-y-6 p-6">
+        <div className="space-y-6 p-6 relative">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -72,7 +104,7 @@ export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps)
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={() => setEditModalOpen(true)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Modifier
                     </Button>
@@ -257,6 +289,16 @@ export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps)
                 </CardContent>
             </Card>
 
+            {/* Edit Modal */}
+            <EditCompanyModal
+                open={editModalOpen}
+                onOpenChange={setEditModalOpen}
+                company={editCompanyData}
+                plans={plans}
+                metiers={metiers}
+                onSuccess={handleEditSuccess}
+            />
+
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
@@ -278,6 +320,16 @@ export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps)
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Success Toast */}
+            {showToast && (
+                <div className="fixed bottom-6 right-6 bg-white rounded-lg shadow-lg border p-4 flex items-center gap-3 animate-in slide-in-from-bottom-5 z-50">
+                    <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                        <Check className="h-4 w-4 text-green-600" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">{toastMessage}</span>
+                </div>
+            )}
         </div>
     )
 }
