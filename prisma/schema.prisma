@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -20,7 +20,7 @@ model User {
   emailVerified DateTime?
   name          String
   password      String?   // Nullable pour OAuth
-  role          String    @default("CLIENT") // CLIENT, ADMIN, AUDITOR, COMMERCIAL
+  role          String    @default("CLIENT") // CLIENT, ADMIN, AUDITOR, COMMERCIAL, TECHNICIEN
   image         String?
   phone         String?
   
@@ -35,6 +35,10 @@ model User {
   duerpsSigned    DuerpDocument[] @relation("SignedBy")
   auditLogs       AuditLog[]
   auditsAssigned  Audit[]         @relation("AuditsAssigned")
+  
+  // Relations inverses pour auditeur/commercial
+  auditorCompanies    Company[] @relation("AuditorCompanies")
+  commercialCompanies Company[] @relation("CommercialCompanies")
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -164,6 +168,13 @@ model Company {
   // Business hours
   openingHours    String?  // JSON string
   
+  // Assignation auditeur/commercial
+  auditorId       String?
+  auditor         User?    @relation("AuditorCompanies", fields: [auditorId], references: [id], onDelete: SetNull)
+  
+  commercialId    String?
+  commercial      User?    @relation("CommercialCompanies", fields: [commercialId], references: [id], onDelete: SetNull)
+  
   // Relations
   users           User[]
   duerps          DuerpDocument[]
@@ -172,6 +183,7 @@ model Company {
   contrats        Contrat[]
   audits          Audit[]
   signalements    Signalement[]
+  salaries        Salarie[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -179,6 +191,34 @@ model Company {
   @@index([siret])
   @@index([metierCode])
   @@map("companies")
+}
+
+// ============================================
+// SALARIÉS
+// ============================================
+
+model Salarie {
+  id              String   @id @default(cuid())
+  
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  nom             String
+  prenom          String
+  poste           String
+  uniteTravail    String
+  dateEntree      DateTime
+  typeContrat     String   // CDI, CDD, APPRENTISSAGE, STAGE, INTERIM, TEMPS_PARTIEL
+  isActive        Boolean  @default(true)
+  
+  email           String?
+  telephone       String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([companyId])
+  @@map("salaries")
 }
 
 // ============================================
@@ -456,6 +496,7 @@ model Contrat {
 model Affichage {
   id          String        @id @default(cuid())
   type        String        // INSPECTION_TRAVAIL, MEDECINE_TRAVAIL, etc.
+  category    String        @default("FICHE_1") // FICHE_1, FICHE_2, FICHE_3, FICHE_4
   title       String
   description String?       
   
@@ -463,17 +504,26 @@ model Affichage {
   companyId   String
   company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
+  // Données dynamiques (Fiche 1 : coordonnées inspection, médecine, référent, horaires, CSE)
+  dynamicData String?       // JSON
+  
   // File
   fileUrl     String?
+  
+  // Versioning (Fiche 2 : textes juridiques versionnés par ICPP)
+  version     Int           @default(1)
+  isLocked    Boolean       @default(false) // true pour les fiches juridiques non modifiables
   
   // Status
   downloaded  Boolean       @default(false)
   printed     Boolean       @default(false)
+  generatedAt DateTime?     // Date de dernière génération PDF
   
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   @@index([companyId])
+  @@index([category])
   @@map("affichages")
 }
 
