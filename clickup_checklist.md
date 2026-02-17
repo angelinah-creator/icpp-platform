@@ -93,25 +93,26 @@
 
 ---
 
-## 🚀 6. Déploiement & Ops ⏳
+## 🚀 6. Déploiement & Ops ✅
 
-### 6.1 Préparation VPS
-- [ ] Dockeriser l'application
-- [ ] Configurer Nginx Reverse Proxy
-- [ ] Configurer SSL (Certbot)
-- [ ] Migration PostgreSQL Production
+### 6.1 Préparation VPS ✅
+- [x] Dockeriser l'application
+- [x] Configurer Nginx Reverse Proxy
+- [x] Configurer SSL (Certbot)
+- [x] Migration PostgreSQL Production
+- [x] Déploiement Hostinger VPS (`icpp-conformite.cloud`)
 
-### 6.2 Monitoring
+### 6.2 Monitoring ⏳
 - [ ] Setup Logs
-- [ ] Setup Backups BDD
+- [ ] Setup Backups BDD automatiques
 
 ---
 
 ## 📊 État Current (Handover)
 
-**Progression :** ~65%
-**Focus actuel :** Build stabilisé, prêt pour déploiement VPS.
-**Prochaine étape :** Déploiement VPS (Docker + Nginx + PostgreSQL Production).
+**Progression :** ~70%
+**Focus actuel :** ✅ Déployé en production sur Hostinger VPS (`icpp-conformite.cloud`)
+**Prochaine étape :** DUERP Backend complet + Audits finalisés + Stripe intégration
 
 ### Stack Frontend ✅
 - [x] Next.js 16.1.1 (App Router + Turbopack)
@@ -591,18 +592,16 @@
 
 ## 📊 Progression Globale
 
-**Terminé** : ~65% (Architecture + Modèle + Auth Backend + Interface Auditeur + Admin CRUD Complet + Build Stable)
-**En cours** : Phase 6 (Déploiement VPS)
-**Restant** : Phases 10-30 (DUERP backend, PDF, Signatures, Stripe intégration complète, Production)
+**Terminé** : ~70% (Architecture + Auth + Interfaces Admin/Auditeur/Client/Technicien + ✅ Déploiement Production)
+**En cours** : DUERP Backend complet + Audits finalisés
+**Restant** : Stripe intégration live, Inscription self-service, Notifications, Tests E2E
 
-### Dernières mises à jour (06/02/2026)
-- ✅ **BUILD STABLE à 100%** - `npm run build` passe sans erreur
-- ✅ Correction modèle `Signalement` (relation Company)
-- ✅ Correction modèle `Reglementation` (champs alignés avec admin.ts)
-- ✅ Correction calcul gravité (helper `graviteToNumber()`)
-- ✅ Stripe rendu optionnel (développement sans clé)
-- ✅ Fix Suspense boundary `/reset-password`
-- ✅ Prisma generate + db push effectués
+### Dernières mises à jour (17/02/2026)
+- ✅ **DÉPLOIEMENT PRODUCTION RÉUSSI** - Hostinger VPS `icpp-conformite.cloud`
+- ✅ Docker + PostgreSQL 16 + Nginx + SSL
+- ✅ Prisma schema migré vers PostgreSQL
+- ✅ Build production stable
+- ✅ Admin action buttons fixes (Audits, Signalements, Abonnements, Entreprises detail)
 
 ### Mises à jour précédentes (04/02/2026)
 - ✅ **Tâches 7-8 complétées à 100%**
