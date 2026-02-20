@@ -14,16 +14,16 @@ export async function getTechnicienDashboardData() {
 
         if (!user || user.role !== "TECHNICIEN") return null
 
-        // Stats for technician
+        // Stats from Tache table (tasks assigned to this technician)
         const stats = {
-            tachesEnCours: await prisma.audit.count({
-                where: { status: "EN_COURS" }
+            tachesEnCours: await prisma.tache.count({
+                where: { assigneId: user.id, status: "EN_COURS" }
             }),
-            tachesAFaire: await prisma.audit.count({
-                where: { status: "PLANIFIE" }
+            tachesAFaire: await prisma.tache.count({
+                where: { assigneId: user.id, status: "A_FAIRE" }
             }),
-            tachesTerminees: await prisma.audit.count({
-                where: { status: "TERMINE" }
+            tachesTerminees: await prisma.tache.count({
+                where: { assigneId: user.id, status: "TERMINEE" }
             })
         }
 
@@ -43,54 +43,43 @@ export async function getTechnicienDashboardData() {
 export async function getTechnicienTaches() {
     try {
         const session = await auth()
-        if (!session?.user) return []
+        if (!session?.user?.email) return []
 
-        // Get audits and signalements for tasks
-        const audits = await prisma.audit.findMany({
-            where: {
-                status: { in: ["PLANIFIE", "EN_COURS"] }
-            },
-            include: {
-                company: true
-            },
-            orderBy: {
-                dateAudit: 'asc'
-            }
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email }
         })
 
-        const signalements = await prisma.signalement.findMany({
-            where: {
-                status: { in: ["NOUVEAU", "EN_COURS"] }
-            },
+        if (!user) return []
+
+        // Get tasks assigned to this technician from the Tache table
+        const taches = await prisma.tache.findMany({
+            where: { assigneId: user.id },
             include: {
-                company: true
+                company: { select: { name: true } },
+                signalement: { select: { type: true, titre: true } }
             },
-            orderBy: {
-                createdAt: 'asc'
-            }
+            orderBy: [
+                { status: 'asc' },
+                { createdAt: 'desc' }
+            ]
         })
 
-        // Format as tasks
-        const tasks = [
-            ...audits.map(audit => ({
-                id: `audit-${audit.id}`,
-                companyName: audit.company.name,
-                task: `Audit ${audit.type}`,
-                date: audit.dateAudit.toLocaleDateString('fr-FR'),
-                status: audit.status === "PLANIFIE" ? "À faire" : "En cours",
-                statusColor: audit.status === "PLANIFIE" ? "orange" : "blue"
-            })),
-            ...signalements.map(sig => ({
-                id: `sig-${sig.id}`,
-                companyName: sig.company?.name || "Entreprise inconnue",
-                task: sig.type,
-                date: sig.createdAt.toLocaleDateString('fr-FR'),
-                status: sig.status === "NOUVEAU" ? "À faire" : "En cours",
-                statusColor: sig.status === "NOUVEAU" ? "orange" : "blue"
-            }))
-        ]
-
-        return tasks
+        return taches.map(t => ({
+            id: t.id,
+            companyName: t.company?.name || "Non renseigné",
+            task: t.titre,
+            description: t.description,
+            date: t.createdAt.toLocaleDateString('fr-FR'),
+            echeance: t.echeance?.toLocaleDateString('fr-FR') || null,
+            status: t.status === "A_FAIRE" ? "À faire"
+                : t.status === "EN_COURS" ? "En cours"
+                    : "Terminée",
+            rawStatus: t.status,
+            statusColor: t.status === "A_FAIRE" ? "orange"
+                : t.status === "EN_COURS" ? "blue"
+                    : "green",
+            priorite: t.priorite
+        }))
     } catch (error) {
         console.error("Error fetching technician tasks:", error)
         return []

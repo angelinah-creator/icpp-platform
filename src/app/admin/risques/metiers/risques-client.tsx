@@ -61,7 +61,7 @@ interface Risque {
     categorieNom: string
     metierCode: string
     metierNom: string
-    gravite: string
+    gravite: number  // Int 1-5 selon CDC
     frequence: number
     mesuresSuggerees: string[]
     isActive: boolean
@@ -73,10 +73,16 @@ interface RisquesClientProps {
     metiers: Array<{ code: string; nom: string }>
 }
 
-const GRAVITE_COLORS: Record<string, string> = {
-    FAIBLE: "bg-green-100 text-green-700",
-    MOYEN: "bg-yellow-100 text-yellow-700",
-    ELEVE: "bg-red-100 text-red-700"
+// Couleurs selon la valeur numérique 1-5
+function getGraviteColor(gravite: number): string {
+    if (gravite <= 2) return "bg-green-100 text-green-700"
+    if (gravite <= 3) return "bg-yellow-100 text-yellow-700"
+    return "bg-red-100 text-red-700"
+}
+
+function getGraviteLabel(gravite: number): string {
+    const labels: Record<number, string> = { 1: "Mineur", 2: "Léger", 3: "Sérieux", 4: "Grave", 5: "Critique" }
+    return labels[gravite] || String(gravite)
 }
 
 export function RisquesClient({ initialRisques, categories, metiers }: RisquesClientProps) {
@@ -149,7 +155,7 @@ export function RisquesClient({ initialRisques, categories, metiers }: RisquesCl
                 description: formData.get("description") as string,
                 categorieCode: formData.get("categorie") as string,
                 metierCode: formData.get("metier") as string,
-                gravite: formData.get("gravite") as string,
+                gravite: parseInt(formData.get("gravite") as string) || 2,
                 frequence: parseInt(formData.get("frequence") as string) || 1,
                 mesuresSuggerees: mesures.filter(m => m.trim())
             })
@@ -171,7 +177,7 @@ export function RisquesClient({ initialRisques, categories, metiers }: RisquesCl
                 description: formData.get("description") as string,
                 categorieCode: formData.get("categorie") as string,
                 metierCode: formData.get("metier") as string,
-                gravite: formData.get("gravite") as string,
+                gravite: parseInt(formData.get("gravite") as string) || 2,
                 frequence: parseInt(formData.get("frequence") as string) || 1,
                 mesuresSuggerees: mesures.filter(m => m.trim())
             })
@@ -228,13 +234,15 @@ export function RisquesClient({ initialRisques, categories, metiers }: RisquesCl
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label>Gravité</Label>
-                    <Select name="gravite" defaultValue={isEdit ? selectedRisque?.gravite : "MOYEN"}>
+                    <Label>Gravité (1-5)</Label>
+                    <Select name="gravite" defaultValue={isEdit ? String(selectedRisque?.gravite ?? 2) : "2"}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="FAIBLE">Faible</SelectItem>
-                            <SelectItem value="MOYEN">Moyen</SelectItem>
-                            <SelectItem value="ELEVE">Élevé</SelectItem>
+                            <SelectItem value="1">1 — Mineur</SelectItem>
+                            <SelectItem value="2">2 — Blessure légère</SelectItem>
+                            <SelectItem value="3">3 — Blessure sérieuse</SelectItem>
+                            <SelectItem value="4">4 — Accident grave</SelectItem>
+                            <SelectItem value="5">5 — Décès / Critique</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -340,7 +348,7 @@ export function RisquesClient({ initialRisques, categories, metiers }: RisquesCl
                                     </TableCell>
                                     <TableCell><Badge className="bg-purple-100 text-purple-700">{risque.categorieNom}</Badge></TableCell>
                                     <TableCell><Badge className="bg-blue-100 text-blue-700">{risque.metierNom}</Badge></TableCell>
-                                    <TableCell><Badge className={GRAVITE_COLORS[risque.gravite]}>{risque.gravite}</Badge></TableCell>
+                                    <TableCell><Badge className={getGraviteColor(risque.gravite)}>{getGraviteLabel(risque.gravite)} ({risque.gravite})</Badge></TableCell>
                                     <TableCell><div className="flex gap-0.5">{renderStars(risque.frequence)}</div></TableCell>
                                     <TableCell className="text-center">
                                         <Switch checked={risque.isActive} onCheckedChange={() => handleToggle(risque.id)} />

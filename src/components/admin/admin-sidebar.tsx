@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, FileText, Settings, Layers, PanelLeftClose, PanelLeft } from "lucide-react"
+import { LayoutDashboard, FileText, Settings, Layers, PanelLeftClose, PanelLeft, Building2, Users, ClipboardCheck, FileBarChart, MonitorPlay, AlertCircle, CreditCard, Briefcase, Scale, LogOut } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -12,17 +12,17 @@ import { useState } from "react"
 
 const navigation = [
     { name: "Tableau de bord", href: "/admin", icon: LayoutDashboard },
-    { name: "Entreprises", href: "/admin/entreprises", image: "/assets/images/entreprises icon.png" },
-    { name: "Auditeurs", href: "/admin/auditeurs", image: "/assets/images/auditeurs icon.png" },
-    { name: "Audits", href: "/admin/audits", image: "/assets/images/audits icon.png" },
-    { name: "DUERP", href: "/admin/duerp", image: "/assets/images/duerp icon.png" },
-    { name: "Affichages", href: "/admin/affichages", icon: FileText },
-    { name: "Signalements", href: "/admin/signalements", image: "/assets/images/signalements icon.png" },
-    { name: "Abonnements", href: "/admin/abonnements", image: "/assets/images/abonnements icon.png" },
-    { name: "Métiers", href: "/admin/metiers", image: "/assets/images/métiers icon.png" },
+    { name: "Entreprises", href: "/admin/entreprises", icon: Building2 },
+    { name: "Auditeurs", href: "/admin/auditeurs", icon: Users },
+    { name: "Audits", href: "/admin/audits", icon: ClipboardCheck },
+    { name: "DUERP", href: "/admin/duerp", icon: FileBarChart },
+    { name: "Affichages", href: "/admin/affichages", icon: MonitorPlay },
+    { name: "Signalements", href: "/admin/signalements", icon: AlertCircle },
+    { name: "Abonnements", href: "/admin/abonnements", icon: CreditCard },
+    { name: "Métiers", href: "/admin/metiers", icon: Briefcase },
     { name: "Unités de Travail", href: "/admin/unites-travail", icon: Layers },
-    { name: "Réglementations", href: "/admin/reglementations", image: "/assets/images/réglementations icon.png" },
-    { name: "Paramètres", href: "/admin/parametres", image: "/assets/images/paramètres icon.png" },
+    { name: "Réglementations", href: "/admin/reglementations", icon: Scale },
+    { name: "Paramètres", href: "/admin/parametres", icon: Settings },
 ]
 
 interface AdminSidebarProps {
@@ -80,7 +80,6 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
                 {navigation.map((item) => {
                     const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
-                    const Icon = item.icon
 
                     return (
                         <Link
@@ -95,25 +94,10 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                                 collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5"
                             )}
                         >
-                            {item.image ? (
-                                <div className="relative h-6 w-6 flex-shrink-0">
-                                    <Image
-                                        src={item.image}
-                                        alt={item.name}
-                                        fill
-                                        className={cn(
-                                            "object-contain",
-                                            isActive ? "brightness-200" : "opacity-70 group-hover:opacity-100",
-                                            item.name === "Abonnements" ? "p-1" : "p-0"
-                                        )}
-                                    />
+                            {item.icon && (
+                                <div className="relative h-6 w-6 flex-shrink-0 flex items-center justify-center">
+                                    <item.icon className="h-4 w-4" />
                                 </div>
-                            ) : (
-                                Icon && (
-                                    <div className="relative h-6 w-6 flex-shrink-0 flex items-center justify-center">
-                                        <Icon className="h-4 w-4" />
-                                    </div>
-                                )
                             )}
                             {!collapsed && <span>{item.name}</span>}
                         </Link>

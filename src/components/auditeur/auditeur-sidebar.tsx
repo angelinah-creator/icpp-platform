@@ -24,7 +24,6 @@ const navItems = [
     { href: "/auditeur/audits", label: "Mes audits", icon: ClipboardCheck },
     { href: "/auditeur/duerp", label: "DUERP", icon: FileText },
     { href: "/auditeur/entreprises", label: "Entreprises", icon: Building2 },
-    { href: "/auditeur/signalements", label: "Signalements", icon: AlertCircle },
     { href: "/auditeur/taches", label: "Tâches", icon: ListTodo },
     { href: "/auditeur/parametres", label: "Paramètres", icon: Settings },
 ]

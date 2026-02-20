@@ -9,14 +9,35 @@ import {
     PanelLeftClose,
     PanelLeft,
     CreditCard,
+    LayoutDashboard,
+    FileText,
+    FolderOpen,
+    MonitorPlay,
+    Users,
+    AlertCircle,
+    Receipt,
+    Settings,
+    type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { logoutAction } from "@/server/actions/auth"
 
+const iconMap: Record<string, LucideIcon> = {
+    LayoutDashboard,
+    FileText,
+    FolderOpen,
+    MonitorPlay,
+    Users,
+    AlertCircle,
+    Receipt,
+    Settings,
+    CreditCard,
+}
+
 interface NavItem {
     href: string
     label: string
-    iconPath: string
+    iconName: string
 }
 
 interface DashboardLayoutShellProps {
@@ -71,29 +92,26 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
 
                 {/* Navigation */}
                 <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
-                    {navItems.map((item) => (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            title={collapsed ? item.label : undefined}
-                            className={cn(
-                                "flex items-center rounded-lg text-sm font-medium transition-colors",
-                                isActive(item.href)
-                                    ? "bg-blue-600 text-white"
-                                    : "text-slate-700 hover:bg-slate-100",
-                                collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5"
-                            )}
-                        >
-                            <Image
-                                src={item.iconPath}
-                                alt={item.label}
-                                width={20}
-                                height={20}
-                                className="h-5 w-5 flex-shrink-0"
-                            />
-                            {!collapsed && item.label}
-                        </Link>
-                    ))}
+                    {navItems.map((item) => {
+                        const Icon = iconMap[item.iconName] || LayoutDashboard
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                title={collapsed ? item.label : undefined}
+                                className={cn(
+                                    "flex items-center rounded-lg text-sm font-medium transition-colors",
+                                    isActive(item.href)
+                                        ? "bg-blue-600 text-white"
+                                        : "text-slate-700 hover:bg-slate-100",
+                                    collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5"
+                                )}
+                            >
+                                <Icon className="h-5 w-5 flex-shrink-0" />
+                                {!collapsed && item.label}
+                            </Link>
+                        )
+                    })}
                 </nav>
 
                 {/* Bottom Section */}
@@ -106,13 +124,7 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
                         >
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm" style={{ backgroundColor: '#244DC338' }}>
-                                    <Image
-                                        src="/assets/maquettes client/icon plan premium.png"
-                                        alt="Plan Premium"
-                                        width={24}
-                                        height={24}
-                                        className="h-6 w-6"
-                                    />
+                                    <CreditCard className="h-6 w-6 text-blue-600" />
                                 </div>
                                 <div>
                                     <p className="text-base font-semibold text-slate-900">Plan premium</p>

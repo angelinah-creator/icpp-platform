@@ -28,14 +28,14 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     const planPrice = user?.company?.subscription?.plan?.prixMensuel || 0
 
     const navItems = [
-        { href: "/dashboard", label: "Tableau de bord", iconPath: "/assets/maquettes client/icon tableau de bord.png" },
-        { href: "/dashboard/duerp", label: "Mon DUERP", iconPath: "/assets/maquettes client/icon mon DUERP.png" },
-        { href: "/dashboard/documents", label: "Documents", iconPath: "/assets/maquettes client/icon documents.png" },
-        { href: "/dashboard/affichages", label: "Affichages", iconPath: "/assets/maquettes client/icon affichage.png" },
-        { href: "/dashboard/salaries", label: "Mes salariés", iconPath: "/assets/maquettes client/icon mes salariés.png" },
-        { href: "/dashboard/signalements", label: "Signalements", iconPath: "/assets/maquettes client/icon signalements.png" },
-        { href: "/dashboard/factures", label: "Factures", iconPath: "/assets/maquettes client/icon factures.png" },
-        { href: "/dashboard/parametres", label: "Paramètres", iconPath: "/assets/maquettes client/icon tableau de bord.png" },
+        { href: "/dashboard", label: "Tableau de bord", iconName: "LayoutDashboard" },
+        { href: "/dashboard/duerp", label: "Mon DUERP", iconName: "FileText" },
+        { href: "/dashboard/documents", label: "Documents", iconName: "FolderOpen" },
+        { href: "/dashboard/affichages", label: "Affichages", iconName: "MonitorPlay" },
+        { href: "/dashboard/salaries", label: "Mes salariés", iconName: "Users" },
+        { href: "/dashboard/signalements", label: "Signalements", iconName: "AlertCircle" },
+        { href: "/dashboard/factures", label: "Factures", iconName: "Receipt" },
+        { href: "/dashboard/parametres", label: "Paramètres", iconName: "Settings" },
     ]
 
     return (

@@ -9,16 +9,19 @@ import bcrypt from "bcryptjs"
 // ============================================
 
 /**
- * Convertit une gravité textuelle en valeur numérique
- * @param gravite - "FAIBLE" | "MOYEN" | "ELEVE"
- * @returns number (1, 2, ou 3)
+ * Retourne la valeur numérique de gravite.
+ * Accepte un Int (1-5, depuis la DB) ou une string (rétro-compat).
  */
-function graviteToNumber(gravite: string): number {
-    switch (gravite.toUpperCase()) {
+function graviteToNumber(gravite: string | number): number {
+    if (typeof gravite === 'number') return gravite
+    switch (String(gravite).toUpperCase()) {
         case "FAIBLE": return 1
-        case "MOYEN": return 2
-        case "ELEVE": return 3
-        default: return 1
+        case "MOYEN": return 3
+        case "ELEVE": return 5
+        default: {
+            const n = parseInt(String(gravite))
+            return isNaN(n) ? 1 : n
+        }
     }
 }
 
@@ -443,7 +446,14 @@ export async function getDuerps() {
 
 export async function getSignalements() {
     const signalements = await prisma.signalement.findMany({
-        include: { company: true },
+        include: {
+            company: true,
+            taches: {
+                include: {
+                    assigne: { select: { id: true, name: true, role: true } }
+                }
+            }
+        },
         orderBy: { createdAt: "desc" }
     })
 
@@ -451,17 +461,32 @@ export async function getSignalements() {
         NOUVEAU_SALARIE: "Nouveau salarié",
         ACCIDENT_TRAVAIL: "Accident du travail",
         NOUVEL_EQUIPEMENT: "Nouvel équipement",
-        DEMENAGEMENT: "Déménagement"
+        DEMENAGEMENT: "Déménagement",
+        INCIDENT: "Incident",
+        DANGER: "Danger",
+        AMELIORATION: "Amélioration"
     }
 
     return signalements.map(s => ({
         id: s.id,
         entreprise: s.company?.name || "Non renseigné",
+        companyId: s.companyId,
         type: typeLabels[s.type] || s.type,
+        titre: s.titre,
+        description: s.description,
         date: s.createdAt.toISOString().split("T")[0],
         statut: s.status === "NOUVEAU" ? "Nouveau"
             : s.status === "EN_COURS" ? "En cours"
-                : "Traité"
+                : s.status === "TRAITE" ? "Traité"
+                    : s.status,
+        rawStatus: s.status,
+        assignedTo: s.taches.length > 0 ? s.taches.map(t => ({
+            id: t.id,
+            userName: t.assigne.name,
+            userRole: t.assigne.role,
+            status: t.status,
+            priorite: t.priorite
+        })) : null
     }))
 }
 
@@ -476,6 +501,71 @@ export async function updateSignalementStatus(id: string, status: string) {
 
     revalidatePath("/admin/signalements")
     return { success: true }
+}
+
+// ============================================
+// ASSIGNATION SIGNALEMENT → TÂCHE
+// ============================================
+
+export async function getUsersByRole(roles: string[]) {
+    const users = await prisma.user.findMany({
+        where: { role: { in: roles } },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+        },
+        orderBy: { name: "asc" }
+    })
+    return users
+}
+
+export async function assignSignalementAsTache(data: {
+    signalementId: string
+    assigneId: string
+    priorite: string
+    echeance?: Date | null
+    commentaire?: string
+}) {
+    try {
+        // Get signalement details
+        const signalement = await prisma.signalement.findUnique({
+            where: { id: data.signalementId },
+            include: { company: true }
+        })
+
+        if (!signalement) {
+            return { error: "Signalement non trouvé" }
+        }
+
+        // Create the task
+        const tache = await prisma.tache.create({
+            data: {
+                titre: `Signalement: ${signalement.titre}`,
+                description: data.commentaire || signalement.description,
+                type: "SIGNALEMENT",
+                priorite: data.priorite,
+                status: "A_FAIRE",
+                echeance: data.echeance || null,
+                signalementId: signalement.id,
+                assigneId: data.assigneId,
+                companyId: signalement.companyId,
+            }
+        })
+
+        // Update signalement status to EN_COURS
+        await prisma.signalement.update({
+            where: { id: data.signalementId },
+            data: { status: "EN_COURS" }
+        })
+
+        revalidatePath("/admin/signalements")
+        return { success: true, tache }
+    } catch (error) {
+        console.error("Erreur assignation signalement:", error)
+        return { error: "Erreur lors de l'assignation" }
+    }
 }
 
 // ============================================
@@ -610,22 +700,18 @@ export async function getRisquesByUniteTravail(uniteTravailId: string) {
         orderBy: { categorie: { ordre: "asc" } }
     })
 
-    return risques.map(r => {
-        const graviteNum = graviteToNumber(r.gravite)
-        return {
-            id: r.id,
-            nom: r.nom,
-            description: r.description,
-            categorie: r.categorie.nom,
-            categorieCode: r.categorieCode,
-            frequence: r.frequence,
-            gravite: r.gravite,
-            graviteNum,
-            priorite: r.frequence * graviteNum, // P = F × G (numérique)
-            mesuresSuggerees: r.mesuresSuggerees,
-            uniteTravail: r.uniteTravail?.nom || ""
-        }
-    })
+    return risques.map(r => ({
+        id: r.id,
+        nom: r.nom,
+        description: r.description,
+        categorie: r.categorie.nom,
+        categorieCode: r.categorieCode,
+        frequence: r.frequence,
+        gravite: r.gravite, // Int 1-5
+        priorite: r.frequence * r.gravite, // P = F × G
+        mesuresSuggerees: r.mesuresSuggerees,
+        uniteTravail: r.uniteTravail?.nom || ""
+    }))
 }
 
 // Backward compatible function - fetches risques via UniteTravail for a given metier
@@ -642,25 +728,19 @@ export async function getMetierRisques(metierCode: string) {
     })
 
     // Flatten and return all risques
-    const allRisques = uts.flatMap(ut =>
-        ut.risques.map(r => {
-            const graviteNum = graviteToNumber(r.gravite)
-            return {
-                id: r.id,
-                nom: r.nom,
-                description: r.description,
-                categorie: r.categorie.nom,
-                frequence: r.frequence,
-                gravite: r.gravite,
-                graviteNum,
-                priorite: r.frequence * graviteNum, // P = F × G (numérique)
-                mesuresSuggerees: r.mesuresSuggerees,
-                uniteTravailNom: ut.nom
-            }
-        })
+    return uts.flatMap(ut =>
+        ut.risques.map(r => ({
+            id: r.id,
+            nom: r.nom,
+            description: r.description,
+            categorie: r.categorie.nom,
+            frequence: r.frequence,
+            gravite: r.gravite, // Int 1-5
+            priorite: r.frequence * r.gravite, // P = F × G
+            mesuresSuggerees: r.mesuresSuggerees,
+            uniteTravailNom: ut.nom
+        }))
     )
-
-    return allRisques
 }
 
 // Alias for planifier audit modal
@@ -1040,7 +1120,7 @@ export async function createRisqueMetier(data: {
     description: string
     categorieCode: string
     metierCode: string
-    gravite: string
+    gravite: number  // Int 1-5 selon CDC
     frequence: number
     mesuresSuggerees: string[]
     uniteTravailId?: string
@@ -1070,7 +1150,7 @@ export async function updateRisqueMetier(id: string, data: {
     description?: string
     categorieCode?: string
     metierCode?: string
-    gravite?: string
+    gravite?: number  // Int 1-5 selon CDC
     frequence?: number
     mesuresSuggerees?: string[]
     uniteTravailId?: string | null

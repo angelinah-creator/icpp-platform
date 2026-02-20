@@ -71,7 +71,7 @@ export async function createSignalement(input: CreateSignalementInput) {
                 type: input.type,
                 titre: input.title,
                 description: input.description,
-                status: "EN_COURS"
+                status: "NOUVEAU"
             }
         })
 

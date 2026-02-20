@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { createSignalement, type CreateSignalementInput } from "@/server/actions/signalements"
 import { Button } from "@/components/ui/button"
-import { X } from "lucide-react"
+import { X, Lightbulb } from "lucide-react"
 
 const TYPES_SIGNALEMENT = [
     { value: "EQUIPEMENT", label: "Nouvel équipement" },
@@ -125,7 +125,7 @@ export function CreateSignalementModal({ onClose, onSuccess }: CreateSignalement
                     {/* Info */}
                     <div className="bg-blue-50 p-4 rounded-lg">
                         <p className="text-sm text-blue-600">
-                            <strong>💡 Bon à savoir :</strong> Ces informations permettront à ICPP de mettre à jour votre DUERP et de maintenir votre conformité réglementaire.
+                            <Lightbulb className="inline h-4 w-4 mr-1 align-text-bottom" /><strong>Bon à savoir :</strong> Ces informations permettront à ICPP de mettre à jour votre DUERP et de maintenir votre conformité réglementaire.
                         </p>
                     </div>
 

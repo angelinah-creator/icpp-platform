@@ -35,6 +35,7 @@ model User {
   duerpsSigned    DuerpDocument[] @relation("SignedBy")
   auditLogs       AuditLog[]
   auditsAssigned  Audit[]         @relation("AuditsAssigned")
+  tachesAssignees Tache[]         @relation("TachesAssignees")
   
   // Relations inverses pour auditeur/commercial
   auditorCompanies    Company[] @relation("AuditorCompanies")
@@ -157,8 +158,16 @@ model Company {
   address         String
   postalCode      String?
   city            String
+  pays            String?  @default("France")
   phone           String?
   email           String?
+  
+  // Informations complémentaires (CDC 3.2)
+  nomCommercial       String?  // Nom commercial si différent
+  codeApe             String?  // Code APE / NAF
+  medecineTravail     String?  // Service de médecine du travail
+  assurance           String?  // Assurance professionnelle
+  commentaireInterne  String?  // Note interne ICPP
   
   // Contact principal (responsable)
   contactName     String?
@@ -184,6 +193,7 @@ model Company {
   audits          Audit[]
   signalements    Signalement[]
   salaries        Salarie[]
+  taches          Tache[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -208,7 +218,9 @@ model Salarie {
   poste           String
   uniteTravail    String
   dateEntree      DateTime
+  dateSortie      DateTime? // NULL = salarié actif (CDC 3.3)
   typeContrat     String   // CDI, CDD, APPRENTISSAGE, STAGE, INTERIM, TEMPS_PARTIEL
+  tempsTravail    String   @default("COMPLET") // COMPLET, PARTIEL, SAISONNIER (CDC 3.3)
   isActive        Boolean  @default(true)
   
   email           String?
@@ -258,10 +270,11 @@ model RisqueMetier {
   // Contenu
   nom             String
   description     String
-  gravite         String   // FAIBLE, MOYEN, ELEVE
-  frequence       Int      @default(1) // 1-5
+  gravite         Int      @default(1) // 1-5 (CDC: gravite_default)
+  frequence       Int      @default(1) // 1-5 (CDC: frequence_default)
+  // Priorité = gravite × frequence (calculée à la volée, non stockée)
   
-  // Mesures préventives suggérées (JSON array)
+  // Mesures préventives suggérées (JSON array ou texte)
   mesuresSuggerees String
   
   isActive        Boolean  @default(true)
@@ -602,6 +615,11 @@ model Audit {
   dateAudit     DateTime
   dateRealisation DateTime?
   
+  // Résultats (CDC 3.5)
+  scoreConformite      Int?     // Score 0-100 calculé à la fin de l'audit
+  syntheseAutomatique  String?  // Texte de synthèse generé
+  documentsObligatoires String? // JSON: { duerp: bool, affichages: bool, extincteurs: bool, ... }
+  
   // Observations
   observations  String?
   rapport       String?   // PDF URL
@@ -639,6 +657,9 @@ model Signalement {
   reponse     String?
   traiteParId String?
   traiteAt    DateTime?
+  
+  // Tâches générées depuis ce signalement
+  taches      Tache[]
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -705,4 +726,41 @@ model AppSettings {
   updatedAt   DateTime  @updatedAt
 
   @@map("app_settings")
+}
+
+// ============================================
+// TÂCHES ASSIGNÉES
+// ============================================
+
+model Tache {
+  id            String    @id @default(cuid())
+  titre         String
+  description   String?
+  type          String    @default("SIGNALEMENT") // SIGNALEMENT, AUDIT, DUERP, AUTRE
+  priorite      String    @default("MOYENNE")     // URGENTE, HAUTE, MOYENNE, BASSE
+  status        String    @default("A_FAIRE")      // A_FAIRE, EN_COURS, TERMINEE
+  echeance      DateTime?
+
+  // Source (signalement d'origine)
+  signalementId String?
+  signalement   Signalement? @relation(fields: [signalementId], references: [id], onDelete: SetNull)
+
+  // Assignation
+  assigneId     String
+  assigne       User     @relation("TachesAssignees", fields: [assigneId], references: [id], onDelete: Cascade)
+
+  // Company liée
+  companyId     String?
+  company       Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  // Admin qui a créé la tâche
+  createdById   String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([assigneId])
+  @@index([status])
+  @@index([signalementId])
+  @@map("taches")
 }

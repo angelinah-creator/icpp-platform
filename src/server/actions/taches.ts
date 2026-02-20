@@ -4,121 +4,102 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { auth } from "@/lib/auth"
 
-export type TaskPriority = "Urgente" | "Haute" | "Moyenne" | "Basse"
-export type TaskStatus = "a_faire" | "en_cours" | "terminee"
-export type TaskType = "Audit" | "Signalement" | "DUERP"
+export type TaskPriority = "URGENTE" | "HAUTE" | "MOYENNE" | "BASSE"
+export type TaskStatus = "A_FAIRE" | "EN_COURS" | "TERMINEE"
 
-export interface AuditorTask {
+export interface TacheData {
     id: string
-    sourceId: string // ID in the original table (Audit.id or Signalement.id)
-    sourceType: "AUDIT" | "SIGNALEMENT"
     titre: string
+    description: string | null
     type: string
-    priorite: TaskPriority
+    priorite: string
+    status: string
+    echeance: Date | null
     entreprise: string
-    echeance: Date
-    statut: TaskStatus
+    signalementId: string | null
+    createdAt: Date
 }
 
-export async function getAuditeurTasks(): Promise<AuditorTask[]> {
+/**
+ * Get tasks assigned to the current user (Auditeur/Technicien/Commercial)
+ */
+export async function getMyTaches(): Promise<TacheData[]> {
     try {
         const session = await auth()
-        if (!session?.user) return []
+        if (!session?.user?.email) return []
 
-        // In a real scenario, filter by auditorId. 
-        // For now, fetch all available items to populate the view as requested by user (using real data).
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email }
+        })
+        if (!user) return []
 
-        // 1. Fetch Audits (PLANIFIE or EN_COURS)
-        const audits = await prisma.audit.findMany({
-            where: {
-                status: { in: ["PLANIFIE", "EN_COURS"] }
-            },
+        const taches = await prisma.tache.findMany({
+            where: { assigneId: user.id },
             include: {
-                company: true
-            }
+                company: { select: { name: true } },
+                signalement: { select: { type: true, titre: true } }
+            },
+            orderBy: [
+                { priorite: 'asc' },
+                { createdAt: 'desc' }
+            ]
         })
 
-        // 2. Fetch Signalements (NOUVEAU or EN_COURS)
-        const signalements = await prisma.signalement.findMany({
-            where: {
-                status: { in: ["NOUVEAU", "EN_COURS"] }
-            },
-            include: {
-                company: true
-            }
-        })
-
-        // Map Audits to Tasks
-        const auditTasks: AuditorTask[] = audits.map(audit => ({
-            id: `audit-${audit.id}`,
-            sourceId: audit.id,
-            sourceType: "AUDIT",
-            titre: `Audit ${audit.type} - ${audit.company.name}`,
-            type: "Audit terrain",
-            priorite: "Haute", // Default priority for audits
-            entreprise: audit.company.name,
-            echeance: audit.dateAudit,
-            statut: audit.status === "PLANIFIE" ? "a_faire" : "en_cours"
+        return taches.map(t => ({
+            id: t.id,
+            titre: t.titre,
+            description: t.description,
+            type: t.type,
+            priorite: t.priorite,
+            status: t.status,
+            echeance: t.echeance,
+            entreprise: t.company?.name || "Non renseigné",
+            signalementId: t.signalementId,
+            createdAt: t.createdAt
         }))
-
-        // Map Signalements to Tasks
-        const signalementTasks: AuditorTask[] = signalements.map(sig => ({
-            id: `sig-${sig.id}`,
-            sourceId: sig.id,
-            sourceType: "SIGNALEMENT",
-            titre: `${sig.type} - ${sig.company?.name || "Entreprise inconnue"}`,
-            type: "Signalement",
-            priorite: sig.type.includes("ACCIDENT") ? "Urgente" : "Moyenne",
-            entreprise: sig.company?.name || "Entreprise inconnue",
-            echeance: sig.createdAt, // Using creation date as "echeance" for now or deadline
-            statut: sig.status === "NOUVEAU" ? "a_faire" : "en_cours"
-        }))
-
-        // Sort by date (echeance)
-        const allTasks = [...auditTasks, ...signalementTasks].sort((a, b) =>
-            new Date(a.echeance).getTime() - new Date(b.echeance).getTime()
-        )
-
-        return allTasks
     } catch (error) {
         console.error("Error fetching tasks:", error)
         return []
     }
 }
 
-export async function updateTaskStatus(sourceId: string, sourceType: "AUDIT" | "SIGNALEMENT", newStatus: TaskStatus) {
+/**
+ * Update a task status (A_FAIRE → EN_COURS → TERMINEE)
+ */
+export async function updateTacheStatus(tacheId: string, newStatus: TaskStatus) {
     try {
-        if (sourceType === "AUDIT") {
-            // Map simple status to Audit status
-            let auditStatus = "PLANIFIE"
-            if (newStatus === "en_cours") auditStatus = "EN_COURS"
-            if (newStatus === "terminee") auditStatus = "TERMINE"
+        const tache = await prisma.tache.update({
+            where: { id: tacheId },
+            data: { status: newStatus }
+        })
 
-            await prisma.audit.update({
-                where: { id: sourceId },
-                data: { status: auditStatus }
-            })
-        } else if (sourceType === "SIGNALEMENT") {
-            // Map simple status to Signalement status
-            let sigStatus = "NOUVEAU"
-            if (newStatus === "en_cours") sigStatus = "EN_COURS"
-            if (newStatus === "terminee") sigStatus = "TRAITE" // or TRAITÉ
-
+        // If the task is TERMINEE and linked to a signalement, mark it as TRAITE
+        if (newStatus === "TERMINEE" && tache.signalementId) {
             await prisma.signalement.update({
-                where: { id: sourceId },
-                data: { status: sigStatus }
+                where: { id: tache.signalementId },
+                data: {
+                    status: "TRAITE",
+                    traiteAt: new Date(),
+                    traiteParId: tache.assigneId
+                }
             })
+            revalidatePath("/admin/signalements")
         }
 
         revalidatePath("/auditeur/taches")
+        revalidatePath("/technicien/taches")
         return { success: true }
     } catch (error) {
         console.error("Error updating task status:", error)
-        return { error: "Failed to update status" }
+        return { error: "Erreur lors de la mise à jour du statut" }
     }
 }
 
-// Get tasks for TECHNICIEN role (same as auditor)
-export async function getTechnicienTasks(): Promise<AuditorTask[]> {
-    return getAuditeurTasks() // Technicians see the same tasks as auditors
+// Legacy aliases for backward compatibility
+export async function getAuditeurTasks() {
+    return getMyTaches()
+}
+
+export async function getTechnicienTasks() {
+    return getMyTaches()
 }

@@ -5,7 +5,7 @@ import { Search, Bell, Filter, Clock, CheckCircle, AlertCircle, Circle, Building
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { AuditorTask, updateTaskStatus } from "@/server/actions/taches"
+import { TacheData, updateTacheStatus } from "@/server/actions/taches"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { toast } from "sonner"
@@ -13,51 +13,55 @@ import { toast } from "sonner"
 // Helper for priority colors
 const getPriorityConfig = (priority: string) => {
     switch (priority) {
-        case "Urgente":
+        case "URGENTE":
             return { color: "bg-red-100 text-red-700", border: "border-l-red-500" }
-        case "Haute":
+        case "HAUTE":
             return { color: "bg-orange-100 text-orange-700", border: "border-l-orange-500" }
-        case "Moyenne":
+        case "MOYENNE":
             return { color: "bg-yellow-100 text-yellow-700", border: "border-l-yellow-500" }
         default:
             return { color: "bg-blue-100 text-blue-700", border: "border-l-blue-500" }
     }
 }
 
+const getStatusLabel = (status: string) => {
+    switch (status) {
+        case "A_FAIRE": return "À faire"
+        case "EN_COURS": return "En cours"
+        case "TERMINEE": return "Terminée"
+        default: return status
+    }
+}
+
 interface TachesClientProps {
-    initialTasks: AuditorTask[]
+    initialTasks: TacheData[]
 }
 
 export function TachesClient({ initialTasks = [] }: TachesClientProps) {
     const [searchQuery, setSearchQuery] = useState("")
-    const [tasks, setTasks] = useState<AuditorTask[]>(initialTasks || [])
+    const [tasks, setTasks] = useState<TacheData[]>(initialTasks || [])
 
-    // Handler to start a task (a_faire -> en_cours)
-    const handleDemarrer = async (task: AuditorTask) => {
-        // Optimistic update
-        const newStatus = "en_cours"
+    // Handler to start a task (A_FAIRE -> EN_COURS)
+    const handleDemarrer = async (task: TacheData) => {
         setTasks(prev => prev.map(t =>
-            t.id === task.id ? { ...t, statut: newStatus } : t
+            t.id === task.id ? { ...t, status: "EN_COURS" } : t
         ))
 
-        const result = await updateTaskStatus(task.sourceId, task.sourceType, newStatus)
+        const result = await updateTacheStatus(task.id, "EN_COURS")
         if (result.success) {
             toast.success("Tâche démarrée")
         } else {
             toast.error("Erreur lors du démarrage de la tâche")
-            // Revert would go here
         }
     }
 
-    // Handler to complete a task (en_cours -> terminee)
-    const handleTerminer = async (task: AuditorTask) => {
-        // Optimistic update
-        const newStatus = "terminee"
+    // Handler to complete a task (EN_COURS -> TERMINEE)
+    const handleTerminer = async (task: TacheData) => {
         setTasks(prev => prev.map(t =>
-            t.id === task.id ? { ...t, statut: newStatus } : t
+            t.id === task.id ? { ...t, status: "TERMINEE" } : t
         ))
 
-        const result = await updateTaskStatus(task.sourceId, task.sourceType, newStatus)
+        const result = await updateTacheStatus(task.id, "TERMINEE")
         if (result.success) {
             toast.success("Tâche terminée")
         } else {
@@ -67,10 +71,10 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
 
     // Calculate stats
     const stats = {
-        aFaire: tasks.filter(t => t.statut === "a_faire").length,
-        enCours: tasks.filter(t => t.statut === "en_cours").length,
-        terminees: tasks.filter(t => t.statut === "terminee").length,
-        urgentes: tasks.filter(t => t.priorite === "Urgente" && t.statut !== "terminee").length
+        aFaire: tasks.filter(t => t.status === "A_FAIRE").length,
+        enCours: tasks.filter(t => t.status === "EN_COURS").length,
+        terminees: tasks.filter(t => t.status === "TERMINEE").length,
+        urgentes: tasks.filter(t => t.priorite === "URGENTE" && t.status !== "TERMINEE").length
     }
 
     const filteredTasks = tasks.filter(t =>
@@ -179,10 +183,10 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                 <div className="space-y-4">
                     {filteredTasks.length === 0 ? (
                         <div className="text-center py-10 text-slate-500 bg-white rounded-lg border border-slate-200">
-                            Aucune tâche trouvée.
+                            Aucune tâche assignée pour le moment.
                         </div>
                     ) : (
-                        filteredTasks.filter(t => t.statut !== "terminee").map((tache) => {
+                        filteredTasks.filter(t => t.status !== "TERMINEE").map((tache) => {
                             const priorityConfig = getPriorityConfig(tache.priorite)
 
                             return (
@@ -203,7 +207,12 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                                             </div>
 
                                             {/* Title */}
-                                            <h3 className="font-semibold text-slate-900 mb-2">{tache.titre}</h3>
+                                            <h3 className="font-semibold text-slate-900 mb-1">{tache.titre}</h3>
+
+                                            {/* Description */}
+                                            {tache.description && (
+                                                <p className="text-sm text-slate-500 mb-2">{tache.description}</p>
+                                            )}
 
                                             {/* Meta */}
                                             <div className="flex items-center gap-4 text-xs text-slate-500">
@@ -220,7 +229,7 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
 
                                         {/* Actions */}
                                         <div className="flex items-center gap-2">
-                                            {tache.statut === "a_faire" && (
+                                            {tache.status === "A_FAIRE" && (
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -231,19 +240,21 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                                                     Démarrer
                                                 </Button>
                                             )}
-                                            {tache.statut === "en_cours" && (
+                                            {tache.status === "EN_COURS" && (
                                                 <Badge variant="secondary" className="bg-blue-100 text-blue-700 font-medium">
                                                     En cours
                                                 </Badge>
                                             )}
-                                            <Button
-                                                size="sm"
-                                                className="bg-[#4A7FFF] hover:bg-[#3968E6] text-white"
-                                                onClick={() => handleTerminer(tache)}
-                                            >
-                                                <CheckCircle className="h-3 w-3 mr-1" />
-                                                Terminer
-                                            </Button>
+                                            {tache.status !== "TERMINEE" && (
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-[#4A7FFF] hover:bg-[#3968E6] text-white"
+                                                    onClick={() => handleTerminer(tache)}
+                                                >
+                                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                                    Terminer
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

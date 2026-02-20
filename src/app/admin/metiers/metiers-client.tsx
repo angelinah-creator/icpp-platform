@@ -38,7 +38,7 @@ interface Risque {
     description: string
     categorie: string
     frequence: number
-    gravite: string
+    gravite: number  // Int 1-5 selon CDC
     mesuresSuggerees: string
 }
 

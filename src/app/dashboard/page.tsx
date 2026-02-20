@@ -2,7 +2,8 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Shield, FileText, Users, CreditCard, Bell, Download, Calendar, CheckCircle2, AlertCircle, Clock, Phone, ChevronRight, Eye } from "lucide-react"
+import { Shield, FileText, Users, CreditCard, Bell, Download, Calendar, CheckCircle2, AlertCircle, Clock, Phone, ChevronRight, Eye, CalendarClock } from "lucide-react"
+import { differenceInDays } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
@@ -91,17 +92,43 @@ async function getClientDashboardData() {
             plan: company.subscription?.plan?.nom || "Essentiel",
             status: company.subscription?.status || "ACTIVE"
         },
+        subscriptionEnd: company.subscription?.currentPeriodEnd || null,
         complianceChecklist: complianceChecks,
         affichagesCount: company.affichages.length,
         teamMembers: company.users
     }
 }
 
-function ComplianceGauge({ score }: { score: number }) {
+function SubscriptionGauge({ endDate }: { endDate: Date | string | null }) {
+    if (!endDate) {
+        return (
+            <div className="flex flex-col items-center">
+                <div className="relative">
+                    <svg width="140" height="140" className="transform -rotate-90">
+                        <circle cx="70" cy="70" r={55} stroke="#e5e7eb" strokeWidth={8} fill="none" strokeDasharray="8 4" />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <CalendarClock className="h-6 w-6 text-slate-400 mb-1" />
+                        <span className="text-xs text-slate-500">Non défini</span>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    const end = new Date(endDate)
+    const now = new Date()
+    const daysRemaining = differenceInDays(end, now)
+    const totalDays = 365
+    const progress = Math.max(0, Math.min(100, (daysRemaining / totalDays) * 100))
+
     const radius = 55
     const strokeWidth = 8
     const circumference = 2 * Math.PI * radius
-    const offset = circumference - (score / 100) * circumference
+    const offset = circumference - (progress / 100) * circumference
+
+    const strokeColor = daysRemaining > 90 ? "#22c55e" : daysRemaining > 30 ? "#f59e0b" : "#ef4444"
+    const textColor = daysRemaining > 90 ? "text-green-500" : daysRemaining > 30 ? "text-amber-500" : "text-red-500"
 
     return (
         <div className="flex flex-col items-center">
@@ -110,7 +137,7 @@ function ComplianceGauge({ score }: { score: number }) {
                     <circle cx="70" cy="70" r={radius} stroke="#e5e7eb" strokeWidth={strokeWidth} fill="none" strokeDasharray="8 4" />
                     <circle
                         cx="70" cy="70" r={radius}
-                        stroke="#22c55e"
+                        stroke={strokeColor}
                         strokeWidth={strokeWidth}
                         fill="none"
                         strokeDasharray={circumference}
@@ -120,8 +147,9 @@ function ComplianceGauge({ score }: { score: number }) {
                     />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-bold text-green-500">{score}%</span>
-                    <span className="text-xs text-slate-500">Conforme</span>
+                    <span className={`text-lg font-bold ${textColor}`}>{format(end, "dd/MM", { locale: fr })}</span>
+                    <span className={`text-[10px] font-medium ${textColor}`}>{format(end, "yyyy")}</span>
+                    <span className="text-[10px] text-slate-500 mt-0.5">Expiration</span>
                 </div>
             </div>
         </div>
@@ -215,7 +243,7 @@ export default async function ClientDashboard() {
                             <div className="flex gap-8">
                                 {/* Jauge à gauche avec fond gris */}
                                 <div className="flex flex-col items-center justify-center bg-slate-50 rounded-2xl p-6">
-                                    <ComplianceGauge score={data.complianceScore} />
+                                    <SubscriptionGauge endDate={data.subscriptionEnd} />
                                     <Button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white text-sm px-6 rounded-full">
                                         Attestation active
                                     </Button>
