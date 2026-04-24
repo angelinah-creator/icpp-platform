@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { ArrowLeft, Save, Building, Mail, Phone, MapPin, User, Check } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowLeft, Save, Building, Mail, Phone, MapPin, User, Check, Building2 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
     Select,
     SelectContent,
@@ -22,6 +23,12 @@ interface NouveauClientFormProps {
     plans: Array<{ code: string; nom: string; prix: number }>
 }
 
+interface UT {
+    id: string
+    nom: string
+    description: string | null
+}
+
 export default function NouveauClientForm({ metiers, plans }: NouveauClientFormProps) {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -29,6 +36,37 @@ export default function NouveauClientForm({ metiers, plans }: NouveauClientFormP
     const [selectedMetier, setSelectedMetier] = useState<string>("")
     const [selectedPlan, setSelectedPlan] = useState<string>("")
     const [showSuccess, setShowSuccess] = useState(false)
+    
+    // Unités de travail state
+    const [availableUTs, setAvailableUTs] = useState<UT[]>([])
+    const [selectedUTIds, setSelectedUTIds] = useState<string[]>([])
+    const [isLoadingUTs, setIsLoadingUTs] = useState(false)
+
+    useEffect(() => {
+        if (!selectedMetier) {
+            setAvailableUTs([])
+            setSelectedUTIds([])
+            return
+        }
+        setIsLoadingUTs(true)
+        fetch(`/api/metier/${encodeURIComponent(selectedMetier)}/uts`)
+            .then(res => res.json())
+            .then((uts: UT[]) => {
+                setAvailableUTs(uts)
+                // Par défaut, toutes les UTs sont cochées
+                setSelectedUTIds(uts.map(ut => ut.id))
+            })
+            .catch(err => console.error("Erreur chargement UTs:", err))
+            .finally(() => setIsLoadingUTs(false))
+    }, [selectedMetier])
+
+    const handleUTToggle = (id: string, checked: boolean) => {
+        if (checked) {
+            setSelectedUTIds(prev => [...prev, id])
+        } else {
+            setSelectedUTIds(prev => prev.filter(utId => utId !== id))
+        }
+    }
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
@@ -52,6 +90,7 @@ export default function NouveauClientForm({ metiers, plans }: NouveauClientFormP
                 contactName: formData.get("contactNom") as string || undefined,
                 contactRole: formData.get("contactFonction") as string || undefined,
                 contactEmail: formData.get("contactEmail") as string || undefined,
+                selectedUtIds: selectedUTIds,
             })
 
             if ('error' in result) {
@@ -126,17 +165,61 @@ export default function NouveauClientForm({ metiers, plans }: NouveauClientFormP
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="secteur">Métier / Secteur d&apos;activité *</Label>
-                                <Select value={selectedMetier} onValueChange={setSelectedMetier} required>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Sélectionnez un métier" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {metiers.map(m => (
-                                            <SelectItem key={m.code} value={m.code}>{m.nom}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <select
+                                    id="secteur"
+                                    value={selectedMetier}
+                                    onChange={(e) => setSelectedMetier(e.target.value)}
+                                    required
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option value="">Sélectionnez un métier</option>
+                                    {metiers.map(m => (
+                                        <option key={m.code} value={m.code}>{m.nom}</option>
+                                    ))}
+                                </select>
                             </div>
+
+                            {/* Unités de travail dynamiques */}
+                            {selectedMetier && (
+                                <div className="space-y-3 p-4 bg-slate-50 border rounded-lg">
+                                    <div>
+                                        <Label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                                            <Building2 className="h-4 w-4 text-blue-600" />
+                                            Unités de travail présentes (Locaux)
+                                        </Label>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            Cochez les unités de travail réellement présentes dans cette entreprise. Elles définiront la base du DUERP.
+                                        </p>
+                                    </div>
+                                    
+                                    {isLoadingUTs ? (
+                                        <div className="text-sm text-slate-400">Chargement des unités de travail...</div>
+                                    ) : availableUTs.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                                            {availableUTs.map((ut) => (
+                                                <div key={ut.id} className="flex items-start space-x-2">
+                                                    <Checkbox 
+                                                        id={`ut-${ut.id}`} 
+                                                        checked={selectedUTIds.includes(ut.id)}
+                                                        onCheckedChange={(checked) => handleUTToggle(ut.id, checked as boolean)}
+                                                    />
+                                                    <div className="grid gap-1.5 leading-none">
+                                                        <label 
+                                                            htmlFor={`ut-${ut.id}`} 
+                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                                        >
+                                                            {ut.nom}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-amber-600">Aucune unité de travail configurée pour ce métier.</div>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="space-y-2">
                                 <Label htmlFor="effectif">Effectif (nombre de salariés)</Label>
                                 <Input

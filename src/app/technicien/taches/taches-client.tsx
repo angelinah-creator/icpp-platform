@@ -1,11 +1,20 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Bell, Filter, Clock, CheckCircle, AlertCircle, Circle, Building2, Calendar, Play } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import { Search, Filter, Clock, CheckCircle, AlertCircle, Circle, Building2, Calendar, Play, FileText, Send, Pencil } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { TacheData, updateTacheStatus } from "@/server/actions/taches"
+import { Textarea } from "@/components/ui/textarea"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog"
+import { TacheData, updateTacheStatus, saveRapportTache } from "@/server/actions/taches"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { toast } from "sonner"
@@ -33,13 +42,27 @@ const getStatusLabel = (status: string) => {
     }
 }
 
+interface TacheWithRapport extends TacheData {
+    rapport?: string | null
+    rapportStatut?: string | null
+}
+
 interface TachesClientProps {
-    initialTasks: TacheData[]
+    initialTasks: TacheWithRapport[]
 }
 
 export function TachesClient({ initialTasks = [] }: TachesClientProps) {
+    const searchParams = useSearchParams()
+    const view = searchParams.get("view")
+    const isRapportView = view === "rapports"
+
     const [searchQuery, setSearchQuery] = useState("")
-    const [tasks, setTasks] = useState<TacheData[]>(initialTasks || [])
+    const [tasks, setTasks] = useState<TacheWithRapport[]>(initialTasks || [])
+
+    // Rapport modal state
+    const [rapportModal, setRapportModal] = useState<{ open: boolean; tache: TacheWithRapport | null }>({ open: false, tache: null })
+    const [rapportText, setRapportText] = useState("")
+    const [isSavingRapport, setIsSavingRapport] = useState(false)
 
     // Handler to start a task (A_FAIRE -> EN_COURS)
     const handleDemarrer = async (task: TacheData) => {
@@ -56,7 +79,7 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
     }
 
     // Handler to complete a task (EN_COURS -> TERMINEE)
-    const handleTerminer = async (task: TacheData) => {
+    const handleTerminer = async (task: TacheWithRapport) => {
         setTasks(prev => prev.map(t =>
             t.id === task.id ? { ...t, status: "TERMINEE" } : t
         ))
@@ -66,6 +89,51 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
             toast.success("Tâche terminée")
         } else {
             toast.error("Erreur lors de la clôture de la tâche")
+        }
+    }
+
+    // Open rapport modal
+    const handleOpenRapport = (tache: TacheWithRapport) => {
+        setRapportText(tache.rapport || "")
+        setRapportModal({ open: true, tache })
+    }
+
+    // Save rapport as draft
+    const handleSaveDraft = async () => {
+        if (!rapportModal.tache) return
+        setIsSavingRapport(true)
+        try {
+            const result = await saveRapportTache(rapportModal.tache.id, rapportText, false)
+            if (result.success) {
+                setTasks(prev => prev.map(t => t.id === rapportModal.tache!.id ? { ...t, rapport: rapportText, rapportStatut: "REDIGE" } : t))
+                toast.success("Brouillon enregistré")
+                setRapportModal({ open: false, tache: null })
+            } else {
+                toast.error(result.error || "Erreur")
+            }
+        } finally {
+            setIsSavingRapport(false)
+        }
+    }
+
+    // Send rapport to admin
+    const handleSendRapport = async () => {
+        if (!rapportModal.tache || !rapportText.trim()) {
+            toast.error("Veuillez rédiger un rapport avant d'envoyer")
+            return
+        }
+        setIsSavingRapport(true)
+        try {
+            const result = await saveRapportTache(rapportModal.tache.id, rapportText, true)
+            if (result.success) {
+                setTasks(prev => prev.map(t => t.id === rapportModal.tache!.id ? { ...t, rapport: rapportText, rapportStatut: "ENVOYE" } : t))
+                toast.success("Rapport envoyé à l'administrateur")
+                setRapportModal({ open: false, tache: null })
+            } else {
+                toast.error(result.error || "Erreur")
+            }
+        } finally {
+            setIsSavingRapport(false)
         }
     }
 
@@ -82,41 +150,40 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
         t.entreprise.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
+    const displayTasks = isRapportView
+        ? filteredTasks.filter(t => t.status === "TERMINEE" || t.rapportStatut)
+        : filteredTasks
+
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-8 py-4">
+            <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900">Mes tâches</h1>
-                        <p className="text-sm text-slate-500">Gérez vos tâches et priorités</p>
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+                            {isRapportView ? "Mes rapports" : "Mes tâches"}
+                        </h1>
+                        <p className="text-sm text-slate-500 hidden sm:block">Gérez vos tâches et priorités</p>
                     </div>
-                    <div className="flex items-center gap-4">
-                        {/* Search */}
+                    <div className="hidden sm:flex items-center gap-4">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <Input
                                 type="text"
                                 placeholder="Rechercher..."
                                 className="w-64 bg-slate-50 pl-10 border-slate-200"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-
-                        {/* Notifications */}
-                        <Button variant="ghost" size="icon" className="relative">
-                            <Bell className="h-5 w-5 text-slate-600" />
-                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
-                                {stats.aFaire}
-                            </span>
-                        </Button>
                     </div>
                 </div>
             </header>
 
             {/* Main Content */}
-            <div className="p-8">
+            <div className="p-4 sm:p-6 lg:p-8">
                 {/* Stats Cards */}
-                <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     {/* À faire */}
                     <div className="bg-white border border-slate-200 rounded-lg p-4">
                         <div className="flex items-center gap-3">
@@ -181,12 +248,12 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
 
                 {/* Tâches List */}
                 <div className="space-y-4">
-                    {filteredTasks.length === 0 ? (
+                    {displayTasks.length === 0 ? (
                         <div className="text-center py-10 text-slate-500 bg-white rounded-lg border border-slate-200">
-                            Aucune tâche assignée pour le moment.
+                            {isRapportView ? "Aucun rapport trouvé." : "Aucune tâche assignée pour le moment."}
                         </div>
                     ) : (
-                        filteredTasks.filter(t => t.status !== "TERMINEE").map((tache) => {
+                        displayTasks.filter(t => isRapportView || t.status !== "TERMINEE").map((tache) => {
                             const priorityConfig = getPriorityConfig(tache.priorite)
 
                             return (
@@ -228,7 +295,29 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center gap-2 mt-3 sm:mt-0">
+                                            {/* Rapport badge */}
+                                            {tache.rapportStatut === "ENVOYE" && (
+                                                <Badge variant="secondary" className="bg-green-100 text-green-700 font-medium">
+                                                    <Send className="h-3 w-3 mr-1" />Envoyé
+                                                </Badge>
+                                            )}
+                                            {tache.rapportStatut === "REDIGE" && (
+                                                <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-medium">
+                                                    <FileText className="h-3 w-3 mr-1" />Brouillon
+                                                </Badge>
+                                            )}
+                                            {tache.status !== "A_FAIRE" && tache.rapportStatut !== "ENVOYE" && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-slate-300 text-slate-600"
+                                                    onClick={(e) => { e.stopPropagation(); handleOpenRapport(tache) }}
+                                                >
+                                                    {tache.rapport ? <Pencil className="h-3 w-3 mr-1" /> : <FileText className="h-3 w-3 mr-1" />}
+                                                    Rapport
+                                                </Button>
+                                            )}
                                             {tache.status === "A_FAIRE" && (
                                                 <Button
                                                     variant="outline"
@@ -263,6 +352,64 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                     )}
                 </div>
             </div>
+
+            {/* ── Modal Rapport ── */}
+            <Dialog open={rapportModal.open} onOpenChange={(open) => !open && setRapportModal({ open: false, tache: null })}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-indigo-600" />
+                            Rapport de tâche
+                        </DialogTitle>
+                        <DialogDescription>
+                            {rapportModal.tache?.titre} — {rapportModal.tache?.entreprise}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        {rapportModal.tache?.rapportStatut === "ENVOYE" ? (
+                            <div className="rounded-lg bg-green-50 border border-green-200 p-4">
+                                <p className="text-sm font-medium text-green-800 mb-2 flex items-center gap-2">
+                                    <Send className="h-4 w-4" /> Rapport envoyé à l&apos;administration
+                                </p>
+                                <p className="text-sm text-green-700 whitespace-pre-wrap">{rapportModal.tache.rapport}</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div>
+                                    <label className="text-sm font-medium text-slate-700 mb-1.5 block">
+                                        Contenu du rapport
+                                    </label>
+                                    <Textarea
+                                        value={rapportText}
+                                        onChange={(e) => setRapportText(e.target.value)}
+                                        placeholder="Décrivez les actions effectuées, les observations, les recommandations..."
+                                        className="min-h-[200px] resize-y"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-end gap-3 pt-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleSaveDraft}
+                                        disabled={isSavingRapport || !rapportText.trim()}
+                                    >
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Enregistrer brouillon
+                                    </Button>
+                                    <Button
+                                        onClick={handleSendRapport}
+                                        disabled={isSavingRapport || !rapportText.trim()}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                    >
+                                        <Send className="h-4 w-4 mr-2" />
+                                        Envoyer à l&apos;admin
+                                    </Button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

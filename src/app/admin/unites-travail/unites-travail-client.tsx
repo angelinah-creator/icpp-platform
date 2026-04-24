@@ -33,6 +33,7 @@ import {
     updateUniteTravail,
     deleteUniteTravail
 } from "@/server/actions/unites-travail"
+import { AdminHeader } from "@/components/admin/admin-header"
 
 interface UniteTravail {
     id: string
@@ -228,16 +229,10 @@ export function UnitesTravailClient({ initialMetiers }: UnitesTravailClientProps
             )}
 
             {/* Header */}
-            <div className="bg-white border-b px-6 py-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Unités de Travail</h1>
-                        <p className="text-gray-500 mt-1">
-                            Gestion des unités de travail par métier pour le DUERP
-                        </p>
-                    </div>
-                </div>
-            </div>
+            <AdminHeader
+                title="Unités de Travail"
+                subtitle="Gestion des unités de travail par métier pour le DUERP"
+            />
 
             {/* Stats Cards */}
             <div className="p-6">

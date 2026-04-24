@@ -23,6 +23,8 @@ import {
 import { AddReglementationModal } from "@/components/admin/add-reglementation-modal"
 import { EditReglementationModal } from "@/components/admin/edit-reglementation-modal"
 import { deleteReglementation, toggleReglementationStatus } from "@/server/actions/admin"
+import { AdminHeader } from "@/components/admin/admin-header"
+
 
 interface Reglementation {
     id: string
@@ -103,25 +105,11 @@ export function ReglementationsClient({ initialReglementations }: Reglementation
     return (
         <div className="space-y-6 relative">
             {/* Page Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Réglementation</h1>
-                    <p className="text-slate-500 mt-1">Gérez les obligations légales par métier</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input
-                            placeholder="Rechercher ..."
-                            className="pl-10 w-[300px] bg-slate-50 border-slate-200"
-                        />
-                    </div>
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-5 w-5 text-slate-600" />
-                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">1</span>
-                    </Button>
-                </div>
-            </div>
+            <AdminHeader
+                title="Réglementation"
+                subtitle="Gérez les obligations légales par métier"
+            />
+
 
             {/* Search and Action Bar */}
             <div className="flex items-center justify-between gap-4 bg-slate-50/50 p-1 rounded-lg">

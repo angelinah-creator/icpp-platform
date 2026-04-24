@@ -7,40 +7,244 @@ import {
     StyleSheet,
 } from "@react-pdf/renderer"
 
-const colors = {
-    primary: "#1E3A8A",
-    primaryLight: "#3B82F6",
-    accent: "#1D4ED8",
-    dark: "#111827",
-    text: "#374151",
-    muted: "#6B7280",
-    border: "#D1D5DB",
-    bg: "#F9FAFB",
+// ============================================
+// COULEURS — fidèles à la maquette
+// ============================================
+const C = {
+    navy: "#0A1F5C",
+    blue: "#2B5ED4",
+    blueLight: "#3B82F6",
+    blueBg: "#EFF6FF",
     white: "#FFFFFF",
-    red: "#DC2626",
-    amber: "#D97706",
+    body: "#1A202C",
+    muted: "#6B7280",
+    border: "#CBD5E1",
+    dotColor: "#94A3B8",
+    cardBg: "#F0F4FF",
+    cardBorder: "#C7D7F5",
+    samu: "#3B82F6",
+    pompiers: "#EF4444",
+    police: "#1D4ED8",
+    european: "#7C3AED",
 }
 
-const styles = StyleSheet.create({
-    page: { padding: 35, backgroundColor: colors.white, fontFamily: "Helvetica" },
-    header: { backgroundColor: colors.primary, padding: 18, marginBottom: 20, borderRadius: 4 },
-    headerTitle: { fontSize: 16, fontWeight: "bold", color: colors.white, textAlign: "center", marginBottom: 4 },
-    headerSubtitle: { fontSize: 10, color: "#93C5FD", textAlign: "center" },
-    companyBox: { backgroundColor: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 4, padding: 12, marginBottom: 18 },
-    companyName: { fontSize: 13, fontWeight: "bold", color: colors.dark, marginBottom: 4 },
-    companyDetail: { fontSize: 9, color: colors.muted, marginBottom: 2 },
-    sectionTitle: { fontSize: 12, fontWeight: "bold", color: colors.primary, borderBottom: `2px solid ${colors.primaryLight}`, paddingBottom: 6, marginBottom: 12, marginTop: 14 },
-    fieldRow: { flexDirection: "row", marginBottom: 8 },
-    fieldLabel: { fontSize: 9, fontWeight: "bold", color: colors.dark, width: 120 },
-    fieldValue: { fontSize: 9, color: colors.text, flex: 1, borderBottom: `1px solid ${colors.border}`, paddingBottom: 2 },
-    emptyField: { fontSize: 9, color: colors.muted, fontStyle: "italic", flex: 1, borderBottom: `1px dotted ${colors.border}`, paddingBottom: 2 },
-    legalRef: { fontSize: 7, color: colors.muted, fontStyle: "italic", marginBottom: 8 },
-    infoBox: { backgroundColor: "#EFF6FF", border: `1px solid #BFDBFE`, borderRadius: 3, padding: 8, marginBottom: 10 },
-    infoText: { fontSize: 8, color: colors.accent },
-    footer: { position: "absolute", bottom: 20, left: 35, right: 35, textAlign: "center", fontSize: 7, color: colors.muted, paddingTop: 8, borderTop: `1px solid ${colors.border}` },
-    conditionalNote: { fontSize: 8, color: colors.amber, fontStyle: "italic", marginBottom: 8 },
+const s = StyleSheet.create({
+    page: {
+        backgroundColor: C.white,
+        fontFamily: "Helvetica",
+        padding: 30,
+        paddingBottom: 50,
+    },
+    // ---- Header (logo + titre) ----
+    logoBlock: {
+        marginBottom: 16,
+    },
+    logoBadge: {
+        backgroundColor: C.navy,
+        borderRadius: 4,
+        padding: 6,
+        width: 70,
+        alignItems: "center",
+        marginBottom: 8,
+    },
+    logoIcpp: {
+        fontSize: 11,
+        fontFamily: "Helvetica-Bold",
+        color: C.white,
+    },
+    logoSub: {
+        fontSize: 4.5,
+        color: "#A0AEC0",
+        textAlign: "center",
+        lineHeight: 1.3,
+    },
+    logoLine: {
+        width: 30,
+        height: 2,
+        backgroundColor: C.blueLight,
+        marginBottom: 8,
+    },
+    bigTitle: {
+        fontSize: 20,
+        fontFamily: "Helvetica-Bold",
+        color: C.body,
+        marginBottom: 2,
+    },
+    bigSub: {
+        fontSize: 9,
+        color: C.muted,
+        marginBottom: 16,
+    },
+    // ---- Grille 2 colonnes ----
+    grid: {
+        flexDirection: "row",
+        gap: 10,
+        marginBottom: 10,
+    },
+    col: {
+        flex: 1,
+    },
+    // ---- Carte section ----
+    card: {
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: C.cardBorder,
+        backgroundColor: C.cardBg,
+        paddingHorizontal: 10,
+        paddingVertical: 10,
+        marginBottom: 10,
+        position: "relative",
+    },
+    cardLeftBar: {
+        position: "absolute",
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 4,
+        backgroundColor: C.blue,
+        borderTopLeftRadius: 5,
+        borderBottomLeftRadius: 5,
+    },
+    cardHeaderRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 5,
+        marginLeft: 6,
+    },
+    cardIcon: {
+        fontSize: 12,
+        marginRight: 6,
+        color: C.navy,
+    },
+    cardTitle: {
+        fontSize: 9,
+        fontFamily: "Helvetica-Bold",
+        color: C.navy,
+        letterSpacing: 0.3,
+    },
+    cardLegal: {
+        fontSize: 7,
+        color: C.muted,
+        marginBottom: 7,
+        marginLeft: 6,
+    },
+    cardNote: {
+        fontSize: 7.5,
+        color: "#374151",
+        lineHeight: 1.5,
+        marginTop: 5,
+        marginLeft: 6,
+    },
+    // ---- Champ pointillé ----
+    dotField: {
+        flexDirection: "row",
+        alignItems: "flex-end",
+        marginBottom: 5,
+        marginLeft: 6,
+    },
+    dotLabel: {
+        fontSize: 8,
+        color: C.body,
+        width: 90,
+    },
+    dotLine: {
+        flex: 1,
+        borderBottomWidth: 1,
+        borderBottomColor: C.dotColor,
+        borderBottomStyle: "dotted",
+        height: 13,
+    },
+    dotValue: {
+        fontSize: 7.5,
+        color: C.muted,
+        flex: 1,
+        borderBottomWidth: 1,
+        borderBottomColor: C.dotColor,
+        borderBottomStyle: "dotted",
+        paddingBottom: 1,
+    },
+    // ---- Horaires collectifs ----
+    horaireRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 4,
+        marginLeft: 6,
+    },
+    horaireDay: {
+        fontSize: 8,
+        color: C.body,
+        width: 55,
+    },
+    horaireDash: {
+        fontSize: 8,
+        color: C.muted,
+        marginHorizontal: 3,
+    },
+    horaireDot: {
+        flex: 1,
+        borderBottomWidth: 1,
+        borderBottomColor: C.dotColor,
+        borderBottomStyle: "dotted",
+        height: 11,
+        marginHorizontal: 2,
+    },
+    // ---- CSE ----
+    cseBadge: {
+        fontSize: 7.5,
+        color: C.blue,
+        backgroundColor: C.blueBg,
+        borderRadius: 3,
+        paddingHorizontal: 5,
+        paddingVertical: 2,
+        marginBottom: 6,
+        marginLeft: 6,
+        alignSelf: "flex-start",
+    },
+    // ---- Numéros d'urgence ----
+    urgenceBadgesRow: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 6,
+        marginTop: 4,
+        marginLeft: 6,
+    },
+    urgenceBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        borderRadius: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        flex: 1,
+    },
+    urgenceLabel: {
+        fontSize: 8,
+        color: C.white,
+        fontFamily: "Helvetica-Bold",
+        flex: 1,
+    },
+    urgenceNumber: {
+        fontSize: 12,
+        color: C.white,
+        fontFamily: "Helvetica-Bold",
+    },
+    // ---- Footer ----
+    footer: {
+        position: "absolute",
+        bottom: 16,
+        left: 30,
+        right: 30,
+        textAlign: "center",
+        fontSize: 7,
+        color: C.muted,
+        borderTopWidth: 1,
+        borderTopColor: C.border,
+        paddingTop: 6,
+    },
 })
 
+// ============================================
+// TYPES
+// ============================================
 export interface Fiche1Data {
     inspectionNom?: string
     inspectionAdresse?: string
@@ -51,10 +255,21 @@ export interface Fiche1Data {
     medecineTelephone?: string
     medecinMedecin?: string
     referentNom?: string
+    referentAdresse?: string
     referentTelephone?: string
+    referentMedecin?: string
+    horairesLundi?: string
+    horairesMardi?: string
+    horairesJeudi?: string
+    horairesMercredi?: string
+    horairesMercrediEnd?: string
+    horairesVendredi?: string
+    horairesSamedi?: string
     horairesCollectifs?: string
     csePresent?: boolean
-    cseMembres?: string
+    cseTitulaires?: string
+    cseSuppleants?: string
+    cseLocal?: string
     urgencePompiers?: string
     urgenceSamu?: string
     urgencePolice?: string
@@ -65,99 +280,202 @@ interface Fiche1Props {
     data: Fiche1Data
 }
 
-function Field({ label, value }: { label: string; value?: string }) {
+// ---- Composants utilitaires ----
+function DotField({ label, value }: { label: string; value?: string }) {
     return (
-        <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>{label} :</Text>
+        <View style={s.dotField}>
+            <Text style={s.dotLabel}>{label}</Text>
             {value ? (
-                <Text style={styles.fieldValue}>{value}</Text>
+                <Text style={s.dotValue}>{value}</Text>
             ) : (
-                <Text style={styles.emptyField}>Non renseigné</Text>
+                <View style={s.dotLine} />
             )}
         </View>
     )
 }
 
+function HoraireRow({ day, value }: { day: string; value?: string }) {
+    return (
+        <View style={s.horaireRow}>
+            <Text style={s.horaireDay}>{day}</Text>
+            <View style={s.horaireDot} />
+            <Text style={s.horaireDash}>à</Text>
+            <View style={s.horaireDot} />
+        </View>
+    )
+}
+
+function SectionCard({
+    icon,
+    title,
+    legal,
+    children,
+}: {
+    icon: string
+    title: string
+    legal?: string
+    children: React.ReactNode
+}) {
+    return (
+        <View style={s.card}>
+            <View style={s.cardLeftBar} />
+            <View style={s.cardHeaderRow}>
+                <Text style={s.cardIcon}>{icon}</Text>
+                <Text style={s.cardTitle}>{title}</Text>
+            </View>
+            {legal && <Text style={s.cardLegal}>{legal}</Text>}
+            {children}
+        </View>
+    )
+}
+
+// ============================================
+// DOCUMENT PRINCIPAL
+// ============================================
 export function Fiche1Coordonnees({ company, data }: Fiche1Props) {
     const showCSE = (company.employeeCount || 0) >= 11
 
     return (
         <Document>
-            <Page size="A4" style={styles.page}>
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>COORDONNÉES & INFORMATIONS OBLIGATOIRES</Text>
-                    <Text style={styles.headerSubtitle}>Affichage obligatoire — Article D4711-1 du Code du travail</Text>
-                </View>
+            <Page size="A4" style={s.page}>
 
-                <View style={styles.companyBox}>
-                    <Text style={styles.companyName}>{company.name}</Text>
-                    <Text style={styles.companyDetail}>{company.address}, {company.city}</Text>
-                    {company.siret && <Text style={styles.companyDetail}>SIRET : {company.siret}</Text>}
-                    {company.employeeCount && <Text style={styles.companyDetail}>Effectif : {company.employeeCount} salarié{company.employeeCount > 1 ? "s" : ""}</Text>}
-                </View>
-
-                {/* INSPECTION DU TRAVAIL */}
-                <Text style={styles.sectionTitle}>1. INSPECTION DU TRAVAIL</Text>
-                <Text style={styles.legalRef}>Articles L8113-1 et D4711-1 du Code du travail</Text>
-                <Field label="Nom / Service" value={data.inspectionNom} />
-                <Field label="Adresse" value={data.inspectionAdresse} />
-                <Field label="Téléphone" value={data.inspectionTelephone} />
-                <Field label="Horaires" value={data.inspectionHoraires} />
-                <View style={styles.infoBox}>
-                    <Text style={styles.infoText}>
-                        Les salariés peuvent contacter l'inspection du travail pour toute question relative au droit du travail.
-                    </Text>
-                </View>
-
-                {/* MÉDECINE DU TRAVAIL */}
-                <Text style={styles.sectionTitle}>2. SERVICE DE PRÉVENTION ET DE SANTÉ AU TRAVAIL</Text>
-                <Text style={styles.legalRef}>Article D4711-1 du Code du travail</Text>
-                <Field label="Nom / Service" value={data.medecineNom} />
-                <Field label="Adresse" value={data.medecineAdresse} />
-                <Field label="Téléphone" value={data.medecineTelephone} />
-                <Field label="Médecin du travail" value={data.medecinMedecin} />
-                <View style={styles.infoBox}>
-                    <Text style={styles.infoText}>
-                        Chaque salarié peut demander une visite médicale auprès du service de prévention et de santé au travail.
-                    </Text>
-                </View>
-
-                {/* RÉFÉRENT HARCÈLEMENT */}
-                <Text style={styles.sectionTitle}>3. RÉFÉRENT HARCÈLEMENT</Text>
-                <Field label="Nom" value={data.referentNom} />
-                <Field label="Téléphone" value={data.referentTelephone} />
-
-                {/* HORAIRES COLLECTIFS */}
-                <Text style={styles.sectionTitle}>4. HORAIRES COLLECTIFS DE TRAVAIL</Text>
-                <Field label="Horaires" value={data.horairesCollectifs} />
-
-                {/* CSE */}
-                {showCSE ? (
-                    <View>
-                        <Text style={styles.sectionTitle}>5. COMITÉ SOCIAL ET ÉCONOMIQUE (CSE)</Text>
-                        <Text style={styles.legalRef}>Obligatoire à partir de 11 salariés</Text>
-                        <Field label="Membres" value={data.cseMembres} />
+                {/* ---- HEADER ---- */}
+                <View style={s.logoBlock}>
+                    <View style={s.logoBadge}>
+                        <Text style={s.logoIcpp}>▶ ICPP</Text>
+                        <Text style={s.logoSub}>CONFORMITÉ{"\n"}INSTITUT DE CONFORMITÉ ET DE{"\n"}PRÉVENTION DES PROFESSIONNELS</Text>
                     </View>
-                ) : (
-                    <View>
-                        <Text style={styles.sectionTitle}>5. CSE</Text>
-                        <Text style={styles.conditionalNote}>Non applicable (effectif inférieur à 11 salariés)</Text>
-                    </View>
-                )}
-
-                {/* SERVICES D'URGENCE */}
-                <Text style={styles.sectionTitle}>6. SERVICES D'URGENCE</Text>
-                <Field label="Pompiers" value={data.urgencePompiers || "18"} />
-                <Field label="SAMU" value={data.urgenceSamu || "15"} />
-                <Field label="Police / Gendarmerie" value={data.urgencePolice || "17"} />
-                <View style={styles.fieldRow}>
-                    <Text style={styles.fieldLabel}>Numéro européen :</Text>
-                    <Text style={styles.fieldValue}>112</Text>
+                    <View style={s.logoLine} />
+                    <Text style={s.bigTitle}>Affichage obligatoire</Text>
+                    <Text style={s.bigSub}>Code du travail · Version 2025</Text>
                 </View>
 
-                <Text style={styles.footer}>
-                    Document généré par ICPP — Affichage obligatoire — À afficher de manière visible dans l'entreprise
+                {/* ---- GRILLE 2 COLONNES ---- */}
+                <View style={s.grid}>
+
+                    {/* ---- COLONNE GAUCHE ---- */}
+                    <View style={s.col}>
+
+                        {/* 1 — INSPECTION DU TRAVAIL */}
+                        <SectionCard
+                            icon="🏛"
+                            title="INSPECTION DE TRAVAIL"
+                            legal="Art. L8113-1 & D4711-1 du Code du travail"
+                        >
+                            <DotField label="Inspecteur compétent" value={data.inspectionNom} />
+                            <DotField label="Adresse" value={data.inspectionAdresse} />
+                            <DotField label="Telephone" value={data.inspectionTelephone} />
+                            <DotField label="Horaires" value={data.inspectionHoraires} />
+                            <Text style={s.cardNote}>
+                                Les salariés peuvent contacter l&apos;inspection du travail pour toute question relative à l&apos;application du droit du travail.
+                            </Text>
+                        </SectionCard>
+
+                        {/* 2 — SANTÉ AU TRAVAIL */}
+                        <SectionCard
+                            icon="⚕"
+                            title="SANTE AU TRAVAIL"
+                            legal="Art. D4711-1 du Code du travail"
+                        >
+                            <DotField label="Service de santé" value={data.medecineNom} />
+                            <DotField label="Adresse" value={data.medecineAdresse} />
+                            <DotField label="Telephone" value={data.medecineTelephone} />
+                            <DotField label="Medecin de travail" value={data.medecinMedecin} />
+                            <Text style={s.cardNote}>
+                                Chaque salarié peut demander une visite médicale auprès du service de prévention et de santé au travail.
+                            </Text>
+                        </SectionCard>
+
+                        {/* 3 — CSE */}
+                        <SectionCard
+                            icon="👥"
+                            title="COMITE SOCIAL ET ECONOMIQUE"
+                        >
+                            <Text style={s.cseBadge}>
+                                À partir de 11 salariés · Art. L2311-2
+                            </Text>
+                            {showCSE ? (
+                                <>
+                                    <DotField label="Membres titulaires" value={data.cseTitulaires} />
+                                    <DotField label="Membres suppléants" value={data.cseSuppleants} />
+                                    <DotField label="Local du CSE" value={data.cseLocal} />
+                                </>
+                            ) : (
+                                <Text style={[s.cardNote, { color: C.muted, fontFamily: "Helvetica-Oblique" }]}>
+                                    Non applicable (effectif inférieur à 11 salariés)
+                                </Text>
+                            )}
+                        </SectionCard>
+
+                    </View>
+
+                    {/* ---- COLONNE DROITE ---- */}
+                    <View style={s.col}>
+
+                        {/* 4 — HORAIRES COLLECTIFS */}
+                        <SectionCard
+                            icon="🕐"
+                            title="HORAIRES COLLECTIFS"
+                            legal="Art. L3171-1 du Code du travail"
+                        >
+                            <HoraireRow day="Lundi" value={data.horairesLundi} />
+                            <HoraireRow day="Mardi" value={data.horairesMardi} />
+                            <HoraireRow day="Mercredi" value={data.horairesMercredi} />
+                            <HoraireRow day="Jeudi" value={data.horairesJeudi} />
+                            <HoraireRow day="Vendredi" value={data.horairesVendredi} />
+                            <HoraireRow day="Samedi" value={data.horairesSamedi} />
+                        </SectionCard>
+
+                        {/* 5 — RÉFÉRENT HARCÈLEMENT */}
+                        <SectionCard
+                            icon="🛡"
+                            title="REFERENT HARCELEMENT"
+                            legal="Art. D4711-1 du Code du travail"
+                        >
+                            <DotField label="Service de santé" value={data.referentNom} />
+                            <DotField label="Adresse" value={data.referentAdresse} />
+                            <DotField label="Telephone" value={data.referentTelephone} />
+                            <DotField label="Medecin de travail" value={data.referentMedecin} />
+                            <Text style={s.cardNote}>
+                                Chaque salarié peut demander une visite médicale auprès du service de prévention et de santé au travail.
+                            </Text>
+                        </SectionCard>
+
+                        {/* 6 — NUMÉROS D'URGENCE */}
+                        <SectionCard
+                            icon="🚨"
+                            title="NUMEROS D'URGENCE"
+                        >
+                            <View style={s.urgenceBadgesRow}>
+                                <View style={[s.urgenceBadge, { backgroundColor: C.samu }]}>
+                                    <Text style={s.urgenceLabel}>SAMU</Text>
+                                    <Text style={s.urgenceNumber}>{data.urgenceSamu || "15"}</Text>
+                                </View>
+                                <View style={[s.urgenceBadge, { backgroundColor: C.pompiers }]}>
+                                    <Text style={s.urgenceLabel}>Pompiers</Text>
+                                    <Text style={s.urgenceNumber}>{data.urgencePompiers || "18"}</Text>
+                                </View>
+                            </View>
+                            <View style={s.urgenceBadgesRow}>
+                                <View style={[s.urgenceBadge, { backgroundColor: C.police }]}>
+                                    <Text style={s.urgenceLabel}>Police</Text>
+                                    <Text style={s.urgenceNumber}>{data.urgencePolice || "17"}</Text>
+                                </View>
+                                <View style={[s.urgenceBadge, { backgroundColor: C.european }]}>
+                                    <Text style={s.urgenceLabel}>Européen</Text>
+                                    <Text style={s.urgenceNumber}>112</Text>
+                                </View>
+                            </View>
+                        </SectionCard>
+
+                    </View>
+                </View>
+
+                {/* ---- FOOTER ---- */}
+                <Text style={s.footer}>
+                    Affichage obligatoire — Code du travail · ICPP Conformité réglementaire
                 </Text>
+
             </Page>
         </Document>
     )

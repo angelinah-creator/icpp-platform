@@ -5,18 +5,11 @@ import { ArrowLeft, Building2, Calendar, Download, FileText, Shield, Users, Aler
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DuerpSignatureBlock } from "@/components/duerp/signature-block"
+import { DuerpRisquesParCategorie, DuerpPlanAction, DuerpSignatureFooter, type EvaluationItem } from "@/components/duerp/risques-view"
+import { InternalNotesPanel, InternalNote } from "@/components/admin/internal-notes-panel"
 
-interface Evaluation {
-    id: string
-    risqueNom: string
-    categorieNom: string
-    uniteTravail: string
-    frequence: number
-    gravite: number
-    niveauRisque: number
-    mesuresAppliquees: string[]
-    observations: string | null
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface Evaluation extends EvaluationItem { }
 
 interface DuerpData {
     id: string
@@ -27,6 +20,7 @@ interface DuerpData {
     nextReviewDate: string | null
     pdfUrl: string | null
     company: {
+        id: string
         name: string
         siret: string | null
         address: string
@@ -39,6 +33,7 @@ interface DuerpData {
         auditorName: string | null
     }
     evaluations: Evaluation[]
+    internalNotes?: InternalNote[]
     signature: {
         signedAt: string
         signerName: string
@@ -46,12 +41,14 @@ interface DuerpData {
     } | null
 }
 
-function getRiskBadge(niveau: number) {
-    if (niveau >= 16)
-        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Critique ({niveau})</Badge>
-    if (niveau >= 8)
-        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Modéré ({niveau})</Badge>
-    return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Faible ({niveau})</Badge>
+function getRiskBadge(risqueResiduel: number) {
+    if (risqueResiduel >= 12)
+        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Critique ({risqueResiduel})</Badge>
+    if (risqueResiduel >= 8)
+        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Élevé ({risqueResiduel})</Badge>
+    if (risqueResiduel >= 4)
+        return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">Modéré ({risqueResiduel})</Badge>
+    return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Faible ({risqueResiduel})</Badge>
 }
 
 function getStatusBadge(status: string, isSigned: boolean) {
@@ -61,10 +58,11 @@ function getStatusBadge(status: string, isSigned: boolean) {
     return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">{status}</Badge>
 }
 
-export function DuerpDetailClient({ duerp }: { duerp: DuerpData }) {
+export function DuerpDetailClient({ duerp, currentUserId, currentUserRole }: { duerp: DuerpData, currentUserId: string, currentUserRole: string }) {
     const totalRisques = duerp.evaluations.length
-    const critiques = duerp.evaluations.filter((e) => e.niveauRisque >= 16).length
-    const moderes = duerp.evaluations.filter((e) => e.niveauRisque >= 8 && e.niveauRisque < 16).length
+    const critiques = duerp.evaluations.filter((e) => (e.risqueResiduel ?? e.niveauRisque) >= 12).length
+    const eleves = duerp.evaluations.filter((e) => { const r = e.risqueResiduel ?? e.niveauRisque; return r >= 8 && r < 12 }).length
+    const moderes = duerp.evaluations.filter((e) => { const r = e.risqueResiduel ?? e.niveauRisque; return r >= 4 && r < 8 }).length
 
     const grouped: Record<string, Evaluation[]> = {}
     for (const ev of duerp.evaluations) {
@@ -164,8 +162,8 @@ export function DuerpDetailClient({ duerp }: { duerp: DuerpData }) {
                                                         <td className="px-3 py-3 text-center">{ev.gravite}</td>
                                                         <td className="px-3 py-3 text-center">{getRiskBadge(ev.niveauRisque)}</td>
                                                         <td className="px-4 py-3 text-slate-600">
-                                                            {ev.mesuresAppliquees.length > 0
-                                                                ? ev.mesuresAppliquees.join(", ")
+                                                            {ev.actionRecommandee
+                                                                ? ev.actionRecommandee
                                                                 : <span className="text-slate-400 italic">Aucune</span>}
                                                         </td>
                                                     </tr>
@@ -184,6 +182,19 @@ export function DuerpDetailClient({ duerp }: { duerp: DuerpData }) {
                                     Les évaluations de risques apparaîtront ici une fois ajoutées.
                                 </p>
                             </div>
+                        )}
+
+                        {/* Nouvelles sections : tableaux par catégorie + plan d'action + signatures */}
+                        {totalRisques > 0 && (
+                            <>
+                                <DuerpRisquesParCategorie evaluations={duerp.evaluations} />
+                                <DuerpPlanAction evaluations={duerp.evaluations} />
+                                <DuerpSignatureFooter
+                                    signedAt={duerp.signature?.signedAt ?? null}
+                                    signerName={duerp.signature?.signerName ?? null}
+                                    companyCity={duerp.company.city}
+                                />
+                            </>
                         )}
                     </div>
 
@@ -253,6 +264,16 @@ export function DuerpDetailClient({ duerp }: { duerp: DuerpData }) {
                             isSigned={!!duerp.signature}
                             signatureInfo={duerp.signature || undefined}
                             pdfUrl={duerp.pdfUrl}
+                        />
+
+                        {/* Notes Internes */}
+                        <InternalNotesPanel
+                            companyId={duerp.company.id}
+                            duerpId={duerp.id}
+                            initialNotes={duerp.internalNotes || []}
+                            currentUserId={currentUserId}
+                            currentUserRole={currentUserRole}
+                            duerpContext={true}
                         />
                     </div>
                 </div>

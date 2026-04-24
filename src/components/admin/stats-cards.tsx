@@ -1,5 +1,4 @@
-import { TrendingUp } from "lucide-react"
-import Image from "next/image"
+import { TrendingUp, Building2, CreditCard, ClipboardCheck, FileBarChart } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
@@ -18,32 +17,36 @@ export function StatsCards({ stats }: StatsCardsProps) {
             title: "Entreprises accompagnées",
             value: stats.totalCompanies,
             trend: "+12% vs mois dernier",
-            image: "/assets/images/entreprises accompagnés icon.png",
+            icon: Building2,
             color: "bg-blue-50 text-blue-700",
+            iconColor: "text-blue-600",
             iconBg: "bg-blue-100",
         },
         {
             title: "Abonnements actifs",
             value: stats.activeSubscriptions,
             trend: "+12% vs mois dernier",
-            image: "/assets/images/abonnements actifs icon.png",
+            icon: CreditCard,
             color: "bg-green-50 text-green-700",
+            iconColor: "text-green-600",
             iconBg: "bg-green-100",
         },
         {
             title: "Audits réalisés",
             value: stats.completedAudits,
             trend: "+12% vs mois dernier",
-            image: "/assets/images/audits réalisés icon.png",
+            icon: ClipboardCheck,
             color: "bg-white border text-slate-700",
+            iconColor: "text-slate-600",
             iconBg: "bg-slate-100",
         },
         {
             title: "DUERP en cours/validés",
             value: stats.duerpCount,
             trend: "+12% vs mois dernier",
-            image: "/assets/images/DUERP en coursvalidés icon.png",
+            icon: FileBarChart,
             color: "bg-indigo-50 text-indigo-700",
+            iconColor: "text-indigo-600",
             iconBg: "bg-indigo-100",
         },
     ]
@@ -51,19 +54,15 @@ export function StatsCards({ stats }: StatsCardsProps) {
     return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {cards.map((card, index) => {
+                const Icon = card.icon
                 return (
-                    <Card key={index} className={cn("border-none shadow-sm", card.color)}>
+                    <Card key={index} className={cn("border-none shadow-sm group hover:-translate-y-1 hover:shadow-md transition-all duration-300", card.color)}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium opacity-80">
                                 {card.title}
                             </CardTitle>
-                            <div className="relative h-5 w-5 shrink-0">
-                                <Image
-                                    src={card.image}
-                                    alt={card.title}
-                                    fill
-                                    className="object-contain"
-                                />
+                            <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300", card.iconBg)}>
+                                <Icon className={cn("h-4 w-4", card.iconColor)} />
                             </div>
                         </CardHeader>
                         <CardContent>

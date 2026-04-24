@@ -1,7 +1,9 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { revalidatePath } from "next/cache"
 import { getCurrentUser } from "@/lib/auth-helpers"
+import { calcIndicateurs } from "@/lib/duerp-calcul"
 
 // ============================================
 // CLIENT DASHBOARD STATS
@@ -103,7 +105,7 @@ export async function getClientDuerps() {
         orderBy: { updatedAt: "desc" }
     })
 
-    return duerps.map(d => ({
+    return duerps.map((d: any) => ({
         id: d.id,
         title: `DUERP v${d.version}`,
         status: getDuerpStatusClient(d),
@@ -200,7 +202,7 @@ export async function getAuditeurDashboardData() {
             auditsEnCours,
             duerpAValider
         },
-        clients: companies.map(c => ({
+        clients: companies.map((c: any) => ({
             id: c.id,
             name: c.name,
             metier: c.metier?.nom || "Non défini",
@@ -216,7 +218,8 @@ export async function getAuditeurClients() {
     const user = await getCurrentUser()
     if (!user || (user.role !== "AUDITOR" && user.role !== "COMMERCIAL")) return []
 
-    const clients = await prisma.company.findMany({
+    // Cherche d'abord les entreprises explicitement assignées à cet auditeur
+    const assignedClients = await prisma.company.findMany({
         where: {
             OR: [
                 { auditorId: user.id },
@@ -224,22 +227,31 @@ export async function getAuditeurClients() {
             ]
         },
         include: {
-            duerps: {
-                orderBy: { updatedAt: "desc" },
-                take: 1
-            },
-            subscription: {
-                include: { plan: true }
-            },
+            duerps: { orderBy: { updatedAt: "desc" }, take: 1 },
+            subscription: { include: { plan: true } },
             metier: true
         }
     })
 
-    return clients.map(c => ({
+    // Si aucune entreprise assignée, retourne toutes les entreprises
+    // (cas d'un auditeur nouvellement créé ou non encore assigné)
+    const clients = assignedClients.length > 0
+        ? assignedClients
+        : await prisma.company.findMany({
+            include: {
+                duerps: { orderBy: { updatedAt: "desc" }, take: 1 },
+                subscription: { include: { plan: true } },
+                metier: true
+            },
+            orderBy: { name: "asc" }
+        })
+
+    return clients.map((c: any) => ({
         id: c.id,
         name: c.name,
         email: c.email,
         metier: c.metier?.nom || "Non défini",
+        metierCode: c.metierCode || null,
         employeeCount: c.employeeCount,
         subscription: c.subscription?.plan?.nom || "Aucun",
         duerpStatus: getDuerpStatusClient(c.duerps[0]),
@@ -261,7 +273,7 @@ export async function getAuditeurAudits() {
         orderBy: { createdAt: "desc" }
     })
 
-    return audits.map(a => {
+    return audits.map((a: any) => {
         const statusColor =
             a.status === "PLANIFIÉ" ? "bg-blue-100 text-blue-700" :
                 a.status === "EN_COURS" ? "bg-orange-100 text-orange-700" :
@@ -300,6 +312,14 @@ export async function getMetiersForAuditeur() {
     })
 }
 
+export async function getPlansForAuditeur() {
+    return prisma.planTarifaire.findMany({
+        where: { isActive: true },
+        select: { code: true, nom: true, prixMensuel: true },
+        orderBy: { ordre: "asc" }
+    })
+}
+
 export async function createCompanyAsAuditeur(data: {
     name: string
     siret?: string
@@ -327,7 +347,8 @@ export async function createCompanyAsAuditeur(data: {
                 postalCode: data.postalCode || null,
                 city: data.city,
                 metierCode: data.metierCode || null,
-                employeeCount: data.employeeCount || 1
+                employeeCount: data.employeeCount || 1,
+                auditorId: user.id  // Auto-assigner l'auditeur créateur
             }
         })
 
@@ -351,6 +372,8 @@ export async function updateCompanyAsAuditeur(id: string, data: {
     city?: string
     metierCode?: string
     employeeCount?: number
+    planCode?: string
+    status?: string
 }) {
     const user = await getCurrentUser()
     if (!user || (user.role !== "AUDITOR" && user.role !== "COMMERCIAL")) {
@@ -372,6 +395,25 @@ export async function updateCompanyAsAuditeur(id: string, data: {
                 employeeCount: data.employeeCount
             }
         })
+
+        // Gérer l'abonnement si planCode ou status fourni
+        if (data.planCode || data.status) {
+            await prisma.subscription.upsert({
+                where: { companyId: id },
+                update: {
+                    planCode: data.planCode || undefined,
+                    status: data.status || undefined,
+                    updatedAt: new Date()
+                },
+                create: {
+                    companyId: id,
+                    planCode: data.planCode || "ESSENTIEL",
+                    status: data.status || "ACTIVE",
+                    currentPeriodStart: new Date(),
+                    currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+                }
+            })
+        }
 
         return { success: true, company }
     } catch (error) {
@@ -408,6 +450,21 @@ export async function getCompanyDetailForAuditeur(id: string) {
                     email: true,
                     role: true
                 }
+            },
+            internalNotes: {
+                include: {
+                    author: {
+                        select: {
+                            id: true,
+                            name: true,
+                            role: true,
+                        }
+                    }
+                },
+                orderBy: [
+                    { isPinned: "desc" },
+                    { createdAt: "desc" }
+                ]
             }
         }
     })
@@ -427,14 +484,16 @@ export async function getCompanyDetailForAuditeur(id: string) {
         metierCode: company.metierCode,
         employeeCount: company.employeeCount,
         subscription: company.subscription?.plan?.nom || "Aucun",
+        subscriptionCode: company.subscription?.planCode || null,
         subscriptionStatus: company.subscription?.status,
-        duerps: company.duerps.map(d => ({
+        internalNotes: company.internalNotes,
+        duerps: company.duerps.map((d: any) => ({
             id: d.id,
             status: d.status,
             createdAt: d.createdAt,
             signedAt: d.signedAt
         })),
-        audits: company.audits.map(a => ({
+        audits: company.audits.map((a: any) => ({
             id: a.id,
             type: a.type,
             status: a.status,
@@ -456,8 +515,11 @@ export async function createAudit(data: {
         identifie: boolean
         gravite?: number
         frequence?: number
+        niveauMaitrise?: string
     }>
     commentaire?: string
+    proposedPlanCode?: string
+    proposedPrice?: number
 }) {
     const user = await getCurrentUser()
 
@@ -477,13 +539,25 @@ export async function createAudit(data: {
         const auditDetails = JSON.stringify({
             score: scoreGlobal,
             documents: data.documents,
-            risks: data.risks.filter(r => r.identifie).map(r => ({
-                categorie: r.categorie,
-                nom: r.nom,
-                gravite: r.gravite || null,
-                frequence: r.frequence || null,
-                priorite: (r.gravite && r.frequence) ? r.gravite * r.frequence : null
-            })),
+            risks: data.risks.filter(r => r.identifie).map(r => {
+                const f = r.frequence || 2
+                const g = r.gravite || 2
+                const niveauMaitrise = r.niveauMaitrise || "Aucune"
+                const { ponderation, risqueBrut, risqueResiduel, prioriteAction } = calcIndicateurs(f, g, niveauMaitrise)
+                return {
+                    categorie: r.categorie,
+                    nom: r.nom,
+                    gravite: g,
+                    frequence: f,
+                    niveauMaitrise,
+                    ponderation,
+                    risqueBrut,
+                    risqueResiduel,
+                    prioriteAction,
+                    // Kept for backward-compat
+                    priorite: risqueBrut,
+                }
+            }),
             commentaire: data.commentaire || null
         })
 
@@ -495,9 +569,14 @@ export async function createAudit(data: {
                 status: "TERMINE",
                 dateAudit: new Date(),
                 dateRealisation: new Date(),
-                observations: auditDetails
+                observations: auditDetails,
+                proposedPlanCode: data.proposedPlanCode || null,
+                proposedPrice: data.proposedPrice ? Math.round(data.proposedPrice * 100) : null
             }
         })
+
+        revalidatePath("/admin/audits")
+        revalidatePath("/dashboard")
 
         return {
             success: true,
@@ -536,7 +615,7 @@ export async function getAuditeurTaches() {
         take: 10
     })
 
-    return duerpsEnAttente.map(d => ({
+    return duerpsEnAttente.map((d: any) => ({
         id: d.id,
         companyName: d.company?.name || "Entreprise inconnue",
         task: "Mise à jour DUERP",
@@ -567,7 +646,7 @@ export async function getAuditeurSignalements() {
         take: 10
     })
 
-    return signalements.map(s => ({
+    return signalements.map((s: any) => ({
         id: s.id,
         companyName: s.company?.name || "Entreprise inconnue",
         type: s.type,
@@ -616,6 +695,7 @@ export async function getAuditDetails(auditId: string) {
         status: audit.status,
         score: parsedObservations.score || null,
         commentaire: parsedObservations.commentaire || audit.observations,
+        proposedPlanCode: audit.proposedPlanCode,
         createdAt: audit.createdAt,
         updatedAt: audit.updatedAt,
         company: {
@@ -703,7 +783,7 @@ export async function getAuditForEdit(auditId: string) {
         return null
     }
 
-    let parsedObservations: { documents?: Record<string, boolean>; risks?: Array<{ categorie: string; nom: string; gravite: number | null; frequence: number | null; priorite: number | null }> } = {}
+    let parsedObservations: { documents?: Record<string, boolean>; risks?: Array<{ categorie: string; nom: string; gravite: number | null; frequence: number | null; priorite: number | null; niveauMaitrise?: string; risqueResiduel?: number; prioriteAction?: string }> } = {}
     try {
         if (audit.observations) {
             parsedObservations = JSON.parse(audit.observations)
@@ -715,6 +795,7 @@ export async function getAuditForEdit(auditId: string) {
         companyId: audit.companyId,
         companyName: audit.company.name,
         metierNom: audit.company.metier?.nom || "",
+        proposedPlanCode: audit.proposedPlanCode || "",
         documents: parsedObservations.documents ? Object.entries(parsedObservations.documents).map(([type, present]) => ({
             type,
             present: present as boolean,
@@ -726,7 +807,10 @@ export async function getAuditForEdit(auditId: string) {
             nom: r.nom,
             gravite: r.gravite,
             frequence: r.frequence,
+            niveauMaitrise: r.niveauMaitrise || "Aucune",
             priorite: r.priorite,
+            risqueResiduel: r.risqueResiduel ?? null,
+            prioriteAction: r.prioriteAction ?? null,
             identifie: true
         }))
     }
@@ -740,7 +824,8 @@ export async function updateAudit(
     auditId: string,
     companyId: string,
     documents: Array<{ type: string; present: boolean; conforme: boolean }>,
-    risques: Array<{ categorie: string; nom: string; gravite: number; frequence: number; priorite: number }>
+    risques: Array<{ categorie: string; nom: string; gravite: number; frequence: number; priorite: number; niveauMaitrise?: string }>,
+    proposedPlanCode?: string
 ) {
     const user = await getCurrentUser()
     if (!user || (user.role !== "AUDITOR" && user.role !== "COMMERCIAL")) {
@@ -759,12 +844,18 @@ export async function updateAudit(
             return { error: "Audit non trouvé ou accès refusé" }
         }
 
-        const documentsPresents = documents.filter(d => d.present).length
         const documentsConformes = documents.filter(d => d.conforme).length
         const totalDocuments = documents.length
 
-        const risquesConformes = risques.filter(r => r.priorite <= 4).length
-        const totalRisques = risques.length
+        // New calculation: use risqueResiduel (F×G×P) to decide conformity (<= 4 = faible = conforme)
+        const enrichedRisques = risques.map(r => {
+            const niveauMaitrise = r.niveauMaitrise || "Aucune"
+            const { ponderation, risqueBrut, risqueResiduel, prioriteAction } = calcIndicateurs(r.frequence, r.gravite, niveauMaitrise)
+            return { ...r, niveauMaitrise, ponderation, risqueBrut, risqueResiduel, prioriteAction }
+        })
+
+        const risquesConformes = enrichedRisques.filter(r => r.risqueResiduel <= 4).length
+        const totalRisques = enrichedRisques.length
 
         const scoreDocuments = totalDocuments > 0 ? (documentsConformes / totalDocuments) * 100 : 0
         const scoreRisques = totalRisques > 0 ? (risquesConformes / totalRisques) * 100 : 0
@@ -776,12 +867,17 @@ export async function updateAudit(
         const auditDetails = JSON.stringify({
             score: scoreGlobal,
             documents: documentsMap,
-            risks: risques.map(r => ({
+            risks: enrichedRisques.map(r => ({
                 categorie: r.categorie,
                 nom: r.nom,
                 gravite: r.gravite,
                 frequence: r.frequence,
-                priorite: r.priorite
+                niveauMaitrise: r.niveauMaitrise,
+                ponderation: r.ponderation,
+                risqueBrut: r.risqueBrut,
+                risqueResiduel: r.risqueResiduel,
+                prioriteAction: r.prioriteAction,
+                priorite: r.risqueBrut,
             }))
         })
 
@@ -789,6 +885,7 @@ export async function updateAudit(
             where: { id: auditId },
             data: {
                 observations: auditDetails,
+                proposedPlanCode: proposedPlanCode || null,
                 updatedAt: new Date()
             }
         })

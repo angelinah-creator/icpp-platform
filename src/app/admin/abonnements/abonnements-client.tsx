@@ -14,13 +14,29 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { AdminHeader } from "@/components/admin/admin-header"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogDescription,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Euro, Loader2 } from "lucide-react"
+
+import { updateSubscriptionStatus, updateSubscriptionPrice } from "@/server/actions/admin"
 
 interface Subscription {
     id: string
+    companyId: string
     entreprise: string
     plan: string
+    planCode: string
     prix: string
     statut: string
+    customPrice?: number | null
 }
 
 interface Stats {
@@ -57,26 +73,56 @@ export function AbonnementsClient({ initialSubscriptions, stats }: AbonnementsCl
         sub.plan.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
+    const [isUpdating, setIsUpdating] = useState<string | null>(null)
+    const [priceModalOpen, setPriceModalOpen] = useState(false)
+    const [selectedSub, setSelectedSub] = useState<Subscription | null>(null)
+    const [newPrice, setNewPrice] = useState<string>("")
+    const [isUpdatingPrice, setIsUpdatingPrice] = useState(false)
+
+    async function handleStatusToggle(id: string, currentStatus: string) {
+        setIsUpdating(id)
+        const newStatus = currentStatus === "ACTIVE" ? "SUSPENDED" : "ACTIVE"
+        try {
+            await updateSubscriptionStatus(id, newStatus)
+            router.refresh()
+        } catch (error) {
+            alert("Erreur lors de la mise à jour du statut")
+        } finally {
+            setIsUpdating(null)
+        }
+    }
+
+    function openPriceModal(sub: Subscription) {
+        setSelectedSub(sub)
+        setNewPrice(sub.customPrice ? (sub.customPrice / 100).toString() : "")
+        setPriceModalOpen(true)
+    }
+
+    async function handlePriceUpdate() {
+        if (!selectedSub) return
+        setIsUpdatingPrice(true)
+        try {
+            const price = newPrice === "" ? null : parseFloat(newPrice)
+            await updateSubscriptionPrice(selectedSub.id, price)
+            setPriceModalOpen(false)
+            router.refresh()
+        } catch (error) {
+            alert("Erreur lors de la mise à jour du prix")
+        } finally {
+            setIsUpdatingPrice(false)
+        }
+    }
+
     return (
         <div className="space-y-6 relative">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Gestion des abonnements</h1>
-                    <p className="text-sm text-slate-500 mt-1">Suivez les abonnements et la facturation</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="Rechercher ..." className="pl-10 w-48 bg-white" />
-                    </div>
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-5 w-5 text-slate-600" />
-                    </Button>
-                </div>
-            </div>
+            <AdminHeader
+                title="Gestion des abonnements"
+                subtitle="Suivez les abonnements et la facturation"
+            />
+
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card className="border shadow-sm">
                     <CardContent className="p-5">
                         <p className="text-xs text-slate-500 uppercase tracking-wide">Revenu mensuel</p>
@@ -98,7 +144,7 @@ export function AbonnementsClient({ initialSubscriptions, stats }: AbonnementsCl
             </div>
 
             {/* Search Bar and Filter */}
-            <div className="flex items-center justify-between gap-4 bg-slate-50/50 p-1 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 p-1 rounded-lg">
                 <div className="relative flex-1 max-w-2xl">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
@@ -117,7 +163,7 @@ export function AbonnementsClient({ initialSubscriptions, stats }: AbonnementsCl
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+            <div className="bg-white rounded-lg border shadow-sm overflow-hidden overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-b">
@@ -157,11 +203,24 @@ export function AbonnementsClient({ initialSubscriptions, stats }: AbonnementsCl
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem asChild className="cursor-pointer">
+                                                <DropdownMenuItem asChild>
                                                     <Link href={`/admin/entreprises`}>
                                                         <Eye className="h-4 w-4 mr-2" />
                                                         Voir l'entreprise
                                                     </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => openPriceModal(sub)}
+                                                >
+                                                    <Euro className="h-4 w-4 mr-2" />
+                                                    Modifier le prix
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => handleStatusToggle(sub.id, sub.statut)}
+                                                    disabled={isUpdating === sub.id}
+                                                    className={sub.statut === "ACTIVE" ? "text-red-600" : "text-green-600"}
+                                                >
+                                                    {sub.statut === "ACTIVE" ? "Suspendre l'abonnement" : "Activer l'abonnement"}
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -172,6 +231,53 @@ export function AbonnementsClient({ initialSubscriptions, stats }: AbonnementsCl
                     </TableBody>
                 </Table>
             </div>
-        </div>
+
+            {/* Price Modal */}
+            <Dialog open={priceModalOpen} onOpenChange={setPriceModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Personnaliser le tarif</DialogTitle>
+                        <DialogDescription>
+                            Définissez un montant mensuel spécifique pour {selectedSub?.entreprise}.
+                            Laissez vide pour repasser au tarif par défaut du plan.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="price">Montant mensuel (€)</Label>
+                            <div className="relative">
+                                <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input
+                                    id="price"
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="Ex: 49.90"
+                                    className="pl-10"
+                                    value={newPrice}
+                                    onChange={(e) => setNewPrice(e.target.value)}
+                                />
+                            </div>
+                            <p className="text-[10px] text-slate-500 italic">
+                                Note: Le prix par défaut du plan {selectedSub?.plan} est de {selectedSub?.prix.split('/')[0]}.
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPriceModalOpen(false)}>Annuler</Button>
+                        <Button
+                            onClick={handlePriceUpdate}
+                            disabled={isUpdatingPrice}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                            {isUpdatingPrice ? (
+                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Mise à jour...</>
+                            ) : (
+                                "Appliquer le prix"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div >
     )
 }

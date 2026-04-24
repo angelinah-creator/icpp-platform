@@ -16,10 +16,10 @@ export function ComplianceCards({ stats }: ComplianceCardsProps) {
     return (
         <div className="grid gap-6 md:grid-cols-3">
             {/* Conformes */}
-            <Card>
+            <Card className="group hover:-translate-y-1 hover:shadow-md transition-all duration-300">
                 <CardContent className="pt-6">
                     <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 group-hover:scale-110 transition-transform duration-300">
                             <CheckCircle2 className="h-6 w-6 text-green-600" />
                         </div>
                         <div>
@@ -34,10 +34,10 @@ export function ComplianceCards({ stats }: ComplianceCardsProps) {
             </Card>
 
             {/* Partiellement conformes */}
-            <Card>
+            <Card className="group hover:-translate-y-1 hover:shadow-md transition-all duration-300">
                 <CardContent className="pt-6">
                     <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 group-hover:scale-110 transition-transform duration-300">
                             <AlertTriangle className="h-6 w-6 text-orange-600" />
                         </div>
                         <div>
@@ -52,10 +52,10 @@ export function ComplianceCards({ stats }: ComplianceCardsProps) {
             </Card>
 
             {/* Non conformes */}
-            <Card>
+            <Card className="group hover:-translate-y-1 hover:shadow-md transition-all duration-300">
                 <CardContent className="pt-6">
                     <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 group-hover:scale-110 transition-transform duration-300">
                             <XCircle className="h-6 w-6 text-red-600" />
                         </div>
                         <div>

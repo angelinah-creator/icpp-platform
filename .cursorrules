@@ -1,0 +1,3 @@
+# Project Rules
+
+- **No Automatic Browser Usage**: Under no circumstances should the AI agent open a browser automatically. All testing and verification requiring a browser must be left to the user. After a task is finished, simply notify the user that it is ready for testing.

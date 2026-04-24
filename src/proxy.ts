@@ -22,7 +22,10 @@ export default auth((req) => {
             return NextResponse.redirect(new URL("/admin", req.url))
         } else if (role === "AUDITOR" || role === "COMMERCIAL") {
             return NextResponse.redirect(new URL("/auditeur", req.url))
+        } else if (role === "TECHNICIEN") {
+            return NextResponse.redirect(new URL("/technicien", req.url))
         } else {
+            // Dashboard applies the full onboarding/restriction policy for clients.
             return NextResponse.redirect(new URL("/dashboard", req.url))
         }
     }

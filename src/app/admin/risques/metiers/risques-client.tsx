@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Plus, MoreHorizontal, Bell, AlertTriangle, Check, Trash2, Edit, Power, Star } from "lucide-react"
+import { Search, Plus, MoreHorizontal, AlertTriangle, Check, Trash2, Edit, Power, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -52,6 +52,7 @@ import {
     deleteRisqueMetier,
     toggleRisqueMetierStatus
 } from "@/server/actions/admin"
+import { AdminHeader } from "@/components/admin/admin-header"
 
 interface Risque {
     id: string
@@ -275,13 +276,10 @@ export function RisquesClient({ initialRisques, categories, metiers }: RisquesCl
 
     return (
         <div className="space-y-6 relative">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Risques par Métier</h1>
-                    <p className="text-sm text-slate-500 mt-1">{initialRisques.length} risque{initialRisques.length > 1 ? "s" : ""}</p>
-                </div>
-                <Button variant="ghost" size="icon" className="relative"><Bell className="h-5 w-5 text-slate-600" /></Button>
-            </div>
+            <AdminHeader
+                title="Risques par Métier"
+                subtitle={`${initialRisques.length} risque${initialRisques.length > 1 ? "s" : ""}`}
+            />
 
             <div className="flex flex-wrap items-center gap-4">
                 <div className="relative">

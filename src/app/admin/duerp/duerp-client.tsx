@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Search, MoreHorizontal, Building2, Filter, Download, Eye, FileText, ShieldCheck } from "lucide-react"
+import { Search, MoreHorizontal, Building2, Filter, Download, Eye, FileText, ShieldCheck, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -20,6 +20,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { AdminHeader } from "@/components/admin/admin-header"
 
 interface Duerp {
     id: string
@@ -67,12 +68,16 @@ export function DuerpClient({ initialDuerps }: { initialDuerps: Duerp[] }) {
     return (
         <div className="space-y-6 relative">
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Gestion des DUERP</h1>
-                    <p className="text-sm text-slate-500 mt-1">
-                        {initialDuerps.length} document{initialDuerps.length > 1 ? "s" : ""} — {signedCount} signé{signedCount > 1 ? "s" : ""}
-                    </p>
-                </div>
+                <AdminHeader
+                    title="Gestion des DUERP"
+                    subtitle={`${initialDuerps.length} document${initialDuerps.length > 1 ? "s" : ""} — ${signedCount} signé${signedCount > 1 ? "s" : ""}`}
+                />
+                <Link href="/admin/duerp/nouveau">
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        Nouveau DUERP
+                    </Button>
+                </Link>
             </div>
 
             <div className="flex items-center justify-between gap-4 bg-slate-50/50 p-1 rounded-lg">
@@ -171,6 +176,12 @@ export function DuerpClient({ initialDuerps }: { initialDuerps: Duerp[] }) {
                                                         <Link href={`/admin/duerp/${duerp.id}`}>
                                                             <Eye className="h-4 w-4 mr-2" />
                                                             Voir détails
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem asChild className="cursor-pointer text-amber-600 focus:text-amber-600">
+                                                        <Link href={`/admin/duerp/${duerp.id}#notes-internes`}>
+                                                            <MessageSquare className="h-4 w-4 mr-2" />
+                                                            Notes internes
                                                         </Link>
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem asChild className="cursor-pointer">

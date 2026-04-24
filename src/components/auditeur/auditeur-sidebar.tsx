@@ -1,19 +1,21 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import {
     LayoutDashboard,
+    ClipboardCheck,
     FileText,
     Building2,
-    AlertCircle,
-    ClipboardCheck,
     ListTodo,
     Settings,
+    FileBarChart,
     LogOut,
-    PanelLeftClose,
+    Menu,
+    X,
     PanelLeft,
+    PanelLeftClose
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
@@ -22,9 +24,11 @@ import { logoutAction } from "@/server/actions/auth"
 const navItems = [
     { href: "/auditeur", label: "Tableau de bord", icon: LayoutDashboard },
     { href: "/auditeur/audits", label: "Mes audits", icon: ClipboardCheck },
+    { href: "/auditeur/paiements", label: "Paiements", icon: FileBarChart },
     { href: "/auditeur/duerp", label: "DUERP", icon: FileText },
     { href: "/auditeur/entreprises", label: "Entreprises", icon: Building2 },
     { href: "/auditeur/taches", label: "Tâches", icon: ListTodo },
+    { href: "/auditeur/taches?view=rapports", label: "Mes rapports", icon: FileBarChart },
     { href: "/auditeur/parametres", label: "Paramètres", icon: Settings },
 ]
 
@@ -37,7 +41,9 @@ interface AuditeurSidebarProps {
 
 export function AuditeurSidebar({ user }: AuditeurSidebarProps) {
     const pathname = usePathname()
+    const searchParams = useSearchParams()
     const [collapsed, setCollapsed] = useState(false)
+    const view = searchParams.get("view")
 
     return (
         <aside
@@ -48,15 +54,13 @@ export function AuditeurSidebar({ user }: AuditeurSidebarProps) {
         >
             {/* Logo + Toggle */}
             <div className={cn("flex items-center border-b border-white/10", collapsed ? "justify-center px-2 py-4" : "justify-between px-6 py-4")}>
-                {!collapsed && (
-                    <Image
-                        src="/assets/maquettes auditeur png/1-2Logo auditeur.png"
-                        alt="ICPP Auditeur"
-                        width={150}
-                        height={40}
-                        className="object-contain"
-                        priority
-                    />
+                {!collapsed ? (
+                    <div className="flex items-center gap-3">
+                        <Image src="/logo.png" alt="ICPP Auditeur" width={32} height={32} className="h-8 w-auto object-contain" priority />
+                        <span className="text-xl font-black tracking-tight text-blue-600">ICPP <span className="text-sky-400">Auditeur</span></span>
+                    </div>
+                ) : (
+                    <Image src="/logo.png" alt="ICPP Auditeur" width={28} height={28} className="h-7 w-auto object-contain" priority />
                 )}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
@@ -68,10 +72,14 @@ export function AuditeurSidebar({ user }: AuditeurSidebarProps) {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 px-3 pt-6 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-3 pt-6 space-y-1 overflow-y-auto no-scrollbar">
                 {navItems.map((item) => {
                     const Icon = item.icon
-                    const isActive = pathname === item.href || (item.href !== "/auditeur" && pathname?.startsWith(item.href))
+                    const [itemPath, itemQuery] = item.href.split("?")
+                    const itemParams = new URLSearchParams(itemQuery)
+                    const itemView = itemParams.get("view")
+
+                    const isActive = pathname === itemPath && view === itemView
                     return (
                         <Link
                             key={item.href}

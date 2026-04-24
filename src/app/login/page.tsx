@@ -103,15 +103,21 @@ export default function LoginPage() {
                 <div className="w-full max-w-md space-y-8">
                     {/* Logo & Header */}
                     <div className="space-y-6">
-                        <div className="relative h-12 w-auto">
+                        <div className="flex items-center gap-4 w-fit">
                             <Image
-                                src="/Frame 13 logo.png"
-                                alt="ICPP Conformité"
-                                width={300}
+                                src="/logo.png"
+                                alt="Logo ICPP"
+                                width={48}
                                 height={48}
-                                className="object-contain object-left"
+                                className="h-12 w-auto object-contain"
                                 priority
                             />
+                            <div className="leading-tight">
+                                <p className="text-2xl font-black tracking-tight text-blue-600">ICPP <span className="text-sky-400">Conformité</span></p>
+                                <p className="mt-1 text-xs font-medium text-slate-600">
+                                    Institut de Conformité et de Prévention Professionnelle
+                                </p>
+                            </div>
                         </div>
 
                         <div>

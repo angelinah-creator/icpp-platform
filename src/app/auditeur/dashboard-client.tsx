@@ -81,7 +81,7 @@ export function AuditeurDashboardClient({ data, taches, signalements }: Auditeur
     const userName = data?.user?.name || "John Doe"
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header */}
             <header className="bg-white border-b border-slate-200 px-8 py-4">
                 <div className="flex items-center justify-between">
@@ -181,11 +181,17 @@ export function AuditeurDashboardClient({ data, taches, signalements }: Auditeur
                 </div>
 
                 {/* Action Buttons - Frame 22 & Frame 48 */}
-                <div className="flex gap-4 mb-6">
+                <div className="flex flex-wrap gap-4 mb-6">
                     <Link href="/auditeur/audits/nouveau">
                         <Button className="bg-[#4A7FFF] hover:bg-[#3968E6] text-white px-6 py-2 rounded-lg font-medium">
                             <Plus className="h-4 w-4 mr-2" />
                             Nouveau audit
+                        </Button>
+                    </Link>
+                    <Link href="/auditeur/taches">
+                        <Button variant="outline" className="border-slate-300 bg-white hover:bg-slate-50 px-6 py-2 rounded-lg font-medium">
+                            <FileText className="h-4 w-4 mr-2 text-slate-600" />
+                            Mes rapports
                         </Button>
                     </Link>
                     <Link href="/auditeur/signalements">
@@ -198,16 +204,16 @@ export function AuditeurDashboardClient({ data, taches, signalements }: Auditeur
 
 
                 {/* Tâches prioritaires - Frame 47 */}
-                <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+                <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 hover:shadow-lg transition-all duration-500">
                     <div className="flex items-center justify-between mb-5">
                         <h2 className="text-base font-semibold text-slate-900">Tâches prioritaires</h2>
                         <Link href="/auditeur/taches" className="text-sm text-slate-600 hover:text-slate-800">Voir tous</Link>
                     </div>
                     <div className="space-y-0 divide-y divide-slate-100">
                         {taches.length > 0 ? taches.map((tache) => (
-                            <div key={tache.id} className="flex items-center justify-between py-4 first:pt-0">
+                            <div key={tache.id} className="flex items-center justify-between py-4 first:pt-0 group hover:bg-slate-50 transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tache.status === "URGENT" ? "bg-red-50" : "bg-orange-50"
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ${tache.status === "URGENT" ? "bg-red-50" : "bg-orange-50"
                                         }`}>
                                         <Building2 className={`h-5 w-5 ${tache.status === "URGENT" ? "text-red-500" : "text-orange-500"
                                             }`} />
@@ -231,16 +237,16 @@ export function AuditeurDashboardClient({ data, taches, signalements }: Auditeur
                 </div>
 
                 {/* Signalements récents - Frame 49 */}
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <div className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-lg transition-all duration-500">
                     <div className="flex items-center justify-between mb-5">
                         <h2 className="text-base font-semibold text-slate-900">Signalements récents des clients</h2>
                         <Link href="/auditeur/signalements" className="text-sm text-slate-600 hover:text-slate-800">Voir tous</Link>
                     </div>
                     <div className="space-y-0 divide-y divide-slate-100">
                         {signalements.length > 0 ? signalements.map((signalement) => (
-                            <div key={signalement.id} className="flex items-center justify-between py-4 first:pt-0">
+                            <div key={signalement.id} className="flex items-center justify-between py-4 first:pt-0 group hover:bg-slate-50 transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                                         <AlertCircle className="h-5 w-5 text-red-500" />
                                     </div>
                                     <div>

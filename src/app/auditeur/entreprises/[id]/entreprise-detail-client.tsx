@@ -12,7 +12,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { updateCompanyAsAuditeur } from "@/server/actions/client"
+import { InternalNotesPanel, InternalNote } from "@/components/admin/internal-notes-panel"
 
 interface CompanyDetail {
     id: string
@@ -27,7 +35,9 @@ interface CompanyDetail {
     metierCode: string | null
     employeeCount: number
     subscription: string
+    subscriptionCode: string | null
     subscriptionStatus: string | undefined
+    internalNotes?: InternalNote[]
     duerps: Array<{
         id: string
         status: string
@@ -50,6 +60,10 @@ interface CompanyDetail {
 
 interface EntrepriseDetailClientProps {
     company: CompanyDetail
+    metiers: { code: string; nom: string }[]
+    plans: { code: string; nom: string; prixMensuel: number }[]
+    currentUserId: string
+    currentUserRole: string
 }
 
 function getStatusBadge(status: string) {
@@ -67,12 +81,15 @@ function getStatusBadge(status: string) {
     }
 }
 
-export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps) {
+export function EntrepriseDetailClient({ company, metiers, plans, currentUserId, currentUserRole }: EntrepriseDetailClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [isEditing, setIsEditing] = useState(searchParams.get("edit") === "true")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [showSuccessToast, setShowSuccessToast] = useState(false)
+    const [selectedMetier, setSelectedMetier] = useState(company.metierCode || "")
+    const [selectedPlan, setSelectedPlan] = useState(company.subscriptionCode || "")
+    const [selectedStatus, setSelectedStatus] = useState(company.subscriptionStatus || "ACTIVE")
 
     async function handleSave(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
@@ -89,7 +106,10 @@ export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps)
                 address: formData.get("address") as string,
                 postalCode: formData.get("postalCode") as string || undefined,
                 city: formData.get("city") as string,
-                employeeCount: parseInt(formData.get("employeeCount") as string) || 1
+                employeeCount: parseInt(formData.get("employeeCount") as string) || 1,
+                metierCode: selectedMetier,
+                planCode: selectedPlan,
+                status: selectedStatus
             })
 
             if ('success' in result) {
@@ -160,9 +180,22 @@ export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps)
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <Label className="text-xs text-slate-500">Métier</Label>
-                                    <p className="font-medium">
-                                        <Badge className="bg-purple-100 text-purple-700">{company.metier}</Badge>
-                                    </p>
+                                    {isEditing ? (
+                                        <Select value={selectedMetier} onValueChange={setSelectedMetier}>
+                                            <SelectTrigger className="mt-1">
+                                                <SelectValue placeholder="Sélectionner un métier" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {metiers.map((m) => (
+                                                    <SelectItem key={m.code} value={m.code}>{m.nom}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <p className="font-medium">
+                                            <Badge className="bg-purple-100 text-purple-700">{company.metier}</Badge>
+                                        </p>
+                                    )}
                                 </div>
                                 <div>
                                     <Label className="text-xs text-slate-500">Effectif</Label>
@@ -175,9 +208,41 @@ export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps)
                             </div>
                             <div>
                                 <Label className="text-xs text-slate-500">Abonnement</Label>
-                                <p className="font-medium">
-                                    <Badge className="bg-blue-100 text-blue-700">{company.subscription}</Badge>
-                                </p>
+                                {isEditing ? (
+                                    <div className="grid grid-cols-2 gap-2 mt-1">
+                                        <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Plan" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {plans.map((p) => (
+                                                    <SelectItem key={p.code} value={p.code}>{p.nom}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Statut" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ACTIVE">Actif</SelectItem>
+                                                <SelectItem value="SUSPENDED">Suspendu</SelectItem>
+                                                <SelectItem value="CANCELED">Résilié</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <Badge className="bg-blue-100 text-blue-700">{company.subscription}</Badge>
+                                        {company.subscriptionStatus && (
+                                            <Badge variant="outline" className={
+                                                company.subscriptionStatus === "ACTIVE" ? "text-green-600 border-green-200" : "text-red-600 border-red-200"
+                                            }>
+                                                {company.subscriptionStatus === "ACTIVE" ? "Actif" : "Inactif"}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -344,6 +409,17 @@ export function EntrepriseDetailClient({ company }: EntrepriseDetailClientProps)
                         </Card>
                     )}
                 </div>
+
+                {!isEditing && (
+                    <div className="mt-8">
+                        <InternalNotesPanel
+                            companyId={company.id}
+                            initialNotes={company.internalNotes || []}
+                            currentUserId={currentUserId}
+                            currentUserRole={currentUserRole}
+                        />
+                    </div>
+                )}
 
                 {/* Actions when editing */}
                 {isEditing && (

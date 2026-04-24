@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import { Search, Bell, User, BellRing, Lock, Save } from "lucide-react"
+import { NotificationBell } from "@/components/notifications/notification-bell"
+
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -89,12 +91,9 @@ export function ParametresClient({ user }: ParametresClientProps) {
                         </div>
 
                         {/* Notifications */}
-                        <Button variant="ghost" size="icon" className="relative">
-                            <Bell className="h-5 w-5 text-slate-600" />
-                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
-                                2
-                            </span>
-                        </Button>
+                        {/* Notifications */}
+                        <NotificationBell />
+
                     </div>
                 </div>
             </header>

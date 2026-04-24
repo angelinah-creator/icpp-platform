@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { AddAffichageModal } from "@/components/admin/add-affichage-modal"
 import { deleteAffichage } from "@/server/actions/admin"
+import { AdminHeader } from "@/components/admin/admin-header"
 
 interface Affichage {
     id: string
@@ -105,14 +106,35 @@ export function AffichagesClient({ initialAffichages, companies }: AffichagesCli
 
     return (
         <div className="space-y-6 relative">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Affichages Obligatoires</h1>
-                    <p className="text-sm text-slate-500 mt-1">
-                        {initialAffichages.length} affichage{initialAffichages.length > 1 ? "s" : ""} —{" "}
-                        Fiche 1: {ficheCount("FICHE_1")}, Fiche 2: {ficheCount("FICHE_2")},
-                        Fiche 3: {ficheCount("FICHE_3")}, Fiche 4: {ficheCount("FICHE_4")}
-                    </p>
+            <AdminHeader
+                title="Affichages Obligatoires"
+                subtitle={`${initialAffichages.length} affichage${initialAffichages.length > 1 ? "s" : ""} — Fiche 1: ${ficheCount("FICHE_1")}, Fiche 2: ${ficheCount("FICHE_2")}, Fiche 3: ${ficheCount("FICHE_3")}, Fiche 4: ${ficheCount("FICHE_4")}`}
+            />
+
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1">
+                    <div className="relative flex-1 max-w-sm">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                            placeholder="Rechercher un affichage..."
+                            className="pl-10 bg-white"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                        <SelectTrigger className="w-56 bg-white">
+                            <Filter className="h-4 w-4 mr-2 text-slate-400" />
+                            <SelectValue placeholder="Catégorie" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ALL">Toutes les fiches</SelectItem>
+                            <SelectItem value="FICHE_1">Fiche 1 — Coordonnées</SelectItem>
+                            <SelectItem value="FICHE_2">Fiche 2 — Droits & Obligations</SelectItem>
+                            <SelectItem value="FICHE_3">Fiche 3 — Interdiction fumer</SelectItem>
+                            <SelectItem value="FICHE_4">Fiche 4 — Sécurité incendie</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
                 <Button
                     className="bg-gradient-to-r from-[#2048BF] to-[#679CFF] hover:opacity-90"
@@ -121,31 +143,6 @@ export function AffichagesClient({ initialAffichages, companies }: AffichagesCli
                     <Plus className="h-4 w-4 mr-2" />
                     Nouvel affichage
                 </Button>
-            </div>
-
-            <div className="flex items-center gap-3">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                        placeholder="Rechercher un affichage..."
-                        className="pl-10 bg-white"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-56 bg-white">
-                        <Filter className="h-4 w-4 mr-2 text-slate-400" />
-                        <SelectValue placeholder="Catégorie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="ALL">Toutes les fiches</SelectItem>
-                        <SelectItem value="FICHE_1">Fiche 1 — Coordonnées</SelectItem>
-                        <SelectItem value="FICHE_2">Fiche 2 — Droits & Obligations</SelectItem>
-                        <SelectItem value="FICHE_3">Fiche 3 — Interdiction fumer</SelectItem>
-                        <SelectItem value="FICHE_4">Fiche 4 — Sécurité incendie</SelectItem>
-                    </SelectContent>
-                </Select>
             </div>
 
             <div className="bg-white rounded-lg border shadow-sm">

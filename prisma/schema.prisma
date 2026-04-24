@@ -36,6 +36,10 @@ model User {
   auditLogs       AuditLog[]
   auditsAssigned  Audit[]         @relation("AuditsAssigned")
   tachesAssignees Tache[]         @relation("TachesAssignees")
+  subscriptionPaymentsRequested SubscriptionPayment[] @relation("SubscriptionPaymentsRequested")
+  subscriptionPaymentsAssigned  SubscriptionPayment[] @relation("SubscriptionPaymentsAssigned")
+  subscriptionPaymentsValidated SubscriptionPayment[] @relation("SubscriptionPaymentsValidated")
+  internalNotes                 InternalNote[]
   
   // Relations inverses pour auditeur/commercial
   auditorCompanies    Company[] @relation("AuditorCompanies")
@@ -131,6 +135,7 @@ model UniteTravail {
   
   // Relations
   risques     RisqueMetier[]
+  companies   Company[] @relation("CompanyUTs")
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -184,6 +189,9 @@ model Company {
   commercialId    String?
   commercial      User?    @relation("CommercialCompanies", fields: [commercialId], references: [id], onDelete: SetNull)
   
+  // Frais de mise en place (49€ unique, première souscription)
+  setupFeePaid    Boolean  @default(false) @map("setup_fee_paid")
+
   // Relations
   users           User[]
   duerps          DuerpDocument[]
@@ -194,6 +202,11 @@ model Company {
   signalements    Signalement[]
   salaries        Salarie[]
   taches          Tache[]
+  subscriptionPayments SubscriptionPayment[]
+  internalNotes        InternalNote[]
+  
+  // Custom M2M pour les unités de travail spécifiquement cochées dans ce local
+  selectedUnitesTravail UniteTravail[] @relation("CompanyUTs")
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -306,6 +319,7 @@ model DuerpDocument {
   
   // Évaluations de risques
   evaluations         EvaluationRisque[]
+  internalNotes       InternalNote[]
   
   // Signature
   signedAt            DateTime?
@@ -320,6 +334,7 @@ model DuerpDocument {
   // Metadata
   lastUpdateReason    String?
   nextReviewDate      DateTime?
+  metadata            Json?        // Stockage de l'historique accidents, accompagnement, etc.
   
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
@@ -343,16 +358,34 @@ model EvaluationRisque {
   // Unité de travail / Poste concerné
   uniteTravail        String   // Ex: "Cuisine", "Salle"
   
+  // Applicabilité du risque
+  applicable          Boolean  @default(true)
+  
+  // Description de l'exposition au risque
+  descriptionExposition String?
+  
   // Évaluation FxG
-  frequence           Int      // 1-5
-  gravite             Int      // 1-5
-  niveauRisque        Int      // F x G
+  frequence           Int      // 1, 2, 3, 4, 5
+  gravite             Int      // 1, 2, 3, 4, 5
+  niveauRisque        Int      // F x G = risque_brut
   
-  // Mesures de prévention appliquées
-  mesuresAppliquees   String   // JSON array
+  // Maîtrise du risque (pondération)
+  niveauMaitrise      String   @default("Aucune") // Aucune, Partielle, Organisationnelle, Protection collective, Maîtrise optimale
+  ponderation         Float    @default(1)         // 1, 0.7, 0.5, 0.3, 0.2
+  risqueResiduel      Float?                       // F × G × P
+  prioriteAction      String?                      // Critique, Élevé, Modéré, Faible
   
-  // Observations
+  // Actions de prévention (Plan d'action priorisé)
+  actionCorrective    String?
+  delai               String?  // Ex: "3 mois"
+  responsable         String?  // Ex: "Direction", "RH"
+  
+  // Observations & Commentaires
   observations        String?
+  commentaires        String?
+  
+  // Actions de prévention appliquées (JSON)
+  mesuresAppliquees   String   @default("[]")
   
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -404,6 +437,7 @@ model Subscription {
   stripeCustomerId      String?             @unique
   stripeSubscriptionId  String?             @unique
   stripePriceId         String?
+  customPrice           Int?                // Prix mensuel personnalisé (en centimes)
   
   // Billing
   currentPeriodStart    DateTime
@@ -427,6 +461,91 @@ model Subscription {
   @@index([status])
   @@index([planCode])
   @@map("subscriptions")
+}
+
+model SubscriptionPayment {
+  id                     String   @id @default(cuid())
+
+  // Owner
+  companyId              String
+  company                Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Client who initiated the payment
+  clientUserId           String
+  clientUser             User     @relation("SubscriptionPaymentsRequested", fields: [clientUserId], references: [id], onDelete: Cascade)
+
+  // Collector selected by the client for cash payments
+  collectorId            String?
+  collector              User?    @relation("SubscriptionPaymentsAssigned", fields: [collectorId], references: [id], onDelete: SetNull)
+
+  // Final validator (admin, auditor, commercial)
+  validatedById          String?
+  validatedBy            User?    @relation("SubscriptionPaymentsValidated", fields: [validatedById], references: [id], onDelete: SetNull)
+
+  // Payment information
+  method                 String   // STRIPE | CASH
+  status                 String   @default("PENDING") // PENDING | AWAITING_VALIDATION | PAID | REJECTED | CANCELED
+  planCode               String?
+  amount                 Int
+  currency               String   @default("EUR")
+  scheduledFor           DateTime?
+  paidAt                 DateTime?
+  validatedAt            DateTime?
+  notes                  String?
+  rejectionReason        String?
+
+  // Stripe metadata
+  stripeCheckoutSessionId String?  @unique
+  stripePaymentIntentId   String?
+  stripeSubscriptionId    String?
+
+  // Receipt
+  receiptNumber          String?   @unique
+  receiptIssuedAt        DateTime?
+  metadata               String?
+
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([clientUserId])
+  @@index([collectorId])
+  @@index([validatedById])
+  @@index([method])
+  @@index([status])
+  @@map("subscription_payments")
+}
+
+// ============================================
+// NOTES INTERNES
+// ============================================
+
+model InternalNote {
+  id          String   @id @default(cuid())
+
+  // Entités liées
+  companyId   String   @map("company_id")
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  duerpId     String?  @map("duerp_id")
+  duerp       DuerpDocument? @relation(fields: [duerpId], references: [id], onDelete: SetNull)
+
+  // Auteur (ADMIN, AUDITOR, COMMERCIAL)
+  authorId    String   @map("author_id")
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Contenu
+  content     String   @db.Text
+  category    String   @default("GENERAL") // GENERAL | PAIEMENT | JURIDIQUE | TECHNIQUE
+  isPinned    Boolean  @default(false) @map("is_pinned")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([companyId])
+  @@index([duerpId])
+  @@index([authorId])
+  @@map("internal_notes")
 }
 
 // ============================================
@@ -623,6 +742,10 @@ model Audit {
   // Observations
   observations  String?
   rapport       String?   // PDF URL
+
+  // Proposition d'abonnement (Optionnel)
+  proposedPlanCode String?  @map("proposed_plan_code")
+  proposedPrice    Int?     @map("proposed_price") // Prix personnalisé proposé lors de l'audit (en centimes)
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -740,6 +863,11 @@ model Tache {
   priorite      String    @default("MOYENNE")     // URGENTE, HAUTE, MOYENNE, BASSE
   status        String    @default("A_FAIRE")      // A_FAIRE, EN_COURS, TERMINEE
   echeance      DateTime?
+
+  // Rapport de clôture
+  rapport       String?                            // Contenu rédigé par l'auditeur/technicien
+  rapportAt     DateTime? @map("rapport_at")
+  rapportStatut String?   @default("REDIGE") @map("rapport_statut") // REDIGE | ENVOYE | LU
 
   // Source (signalement d'origine)
   signalementId String?

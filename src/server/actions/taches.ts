@@ -18,6 +18,9 @@ export interface TacheData {
     entreprise: string
     signalementId: string | null
     createdAt: Date
+    rapport?: string | null
+    rapportAt?: Date | null
+    rapportStatut?: string | null
 }
 
 /**
@@ -55,7 +58,10 @@ export async function getMyTaches(): Promise<TacheData[]> {
             echeance: t.echeance,
             entreprise: t.company?.name || "Non renseigné",
             signalementId: t.signalementId,
-            createdAt: t.createdAt
+            createdAt: t.createdAt,
+            rapport: (t as typeof t & { rapport?: string | null }).rapport ?? null,
+            rapportAt: (t as typeof t & { rapportAt?: Date | null }).rapportAt ?? null,
+            rapportStatut: (t as typeof t & { rapportStatut?: string | null }).rapportStatut ?? null,
         }))
     } catch (error) {
         console.error("Error fetching tasks:", error)
@@ -102,4 +108,105 @@ export async function getAuditeurTasks() {
 
 export async function getTechnicienTasks() {
     return getMyTaches()
+}
+
+// ============================================================
+// RAPPORT DE TÂCHE
+// ============================================================
+
+/**
+ * Enregistrer (brouillon) ou envoyer le rapport d'une tâche
+ */
+export async function saveRapportTache(tacheId: string, rapport: string, send: boolean = false) {
+    try {
+        const session = await auth()
+        if (!session?.user?.email) return { error: "Non authentifié" }
+
+        const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+        if (!user) return { error: "Utilisateur introuvable" }
+
+        // Vérifier que la tâche appartient bien à cet utilisateur
+        const tache = await prisma.tache.findUnique({
+            where: { id: tacheId },
+            include: { company: { select: { name: true } } }
+        })
+        if (!tache || tache.assigneId !== user.id) return { error: "Tâche introuvable ou non autorisée" }
+
+        const newStatut = send ? "ENVOYE" : "REDIGE"
+
+        await prisma.tache.update({
+            where: { id: tacheId },
+            data: {
+                rapport,
+                rapportAt: new Date(),
+                rapportStatut: newStatut,
+            }
+        })
+
+        if (send) {
+            // Notifier tous les admins
+            const admins = await prisma.user.findMany({
+                where: { role: "ADMIN" },
+                select: { id: true }
+            })
+            const auteurNom = user.name || "Auditeur"
+            await Promise.all(admins.map(admin =>
+                prisma.notification.create({
+                    data: {
+                        userId: admin.id,
+                        type: "RAPPORT_TACHE",
+                        title: "Nouveau rapport de tâche",
+                        message: `${auteurNom} a soumis un rapport pour la tâche « ${tache.titre} » — ${tache.company?.name || "N/A"}.`,
+                        actionUrl: "/admin/rapports",
+                    }
+                })
+            ))
+            revalidatePath("/admin/rapports")
+        }
+
+        revalidatePath("/auditeur/taches")
+        revalidatePath("/technicien/taches")
+        return { success: true }
+    } catch (error) {
+        console.error("Error saving rapport:", error)
+        return { error: "Erreur lors de l'enregistrement du rapport" }
+    }
+}
+
+/**
+ * Récupère tous les rapports envoyés (pour l'admin)
+ */
+export async function getAdminRapports() {
+    try {
+        const taches = await prisma.tache.findMany({
+            where: { rapportStatut: { in: ["ENVOYE", "LU"] } },
+            include: {
+                assigne: { select: { id: true, name: true, role: true } },
+                company: { select: { name: true } },
+                signalement: { select: { type: true, titre: true } }
+            },
+            orderBy: { rapportAt: "desc" }
+        })
+        return taches
+    } catch (error) {
+        console.error("Error fetching admin rapports:", error)
+        return []
+    }
+}
+
+/**
+ * Marquer un rapport comme lu (par l'admin)
+ */
+export async function markRapportLu(tacheId: string) {
+    try {
+        await prisma.tache.update({
+            where: { id: tacheId },
+            data: { rapportStatut: "LU" }
+        })
+        revalidatePath("/admin/rapports")
+        return { success: true }
+    } catch (error) {
+        console.error("Error marking rapport as lu:", error)
+        return { error: "Erreur" }
+    }
 }

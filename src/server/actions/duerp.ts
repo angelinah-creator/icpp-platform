@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
+import { calcIndicateurs, getPonderation } from "@/lib/duerp-calcul"
 
 export async function signDuerp(duerpId: string) {
     const session = await auth()
@@ -102,6 +103,21 @@ export async function getDuerpDetail(duerpId: string) {
                 orderBy: { uniteTravail: "asc" },
             },
             signer: true,
+            internalNotes: {
+                include: {
+                    author: {
+                        select: {
+                            id: true,
+                            name: true,
+                            role: true,
+                        }
+                    }
+                },
+                orderBy: [
+                    { isPinned: "desc" },
+                    { createdAt: "desc" }
+                ]
+            }
         },
     })
 
@@ -110,22 +126,40 @@ export async function getDuerpDetail(duerpId: string) {
     }
 
     const evaluations = duerp.evaluations.map((ev) => {
-        let mesures: string[] = []
+        // Mesures suggérées par le risque (base de référence ICPP)
+        let mesuresSuggerees: string[] = []
         try {
-            mesures = JSON.parse(ev.mesuresAppliquees || "[]")
+            mesuresSuggerees = JSON.parse(ev.risque.mesuresSuggerees || "[]")
         } catch {
-            mesures = ev.mesuresAppliquees ? [ev.mesuresAppliquees] : []
+            mesuresSuggerees = ev.risque.mesuresSuggerees ? [ev.risque.mesuresSuggerees] : []
         }
+
+        // Lecture des champs de maîtrise (avec fallback pour compatibilité)
+        const niveauMaitrise = (ev as Record<string, unknown>).niveauMaitrise as string ?? "Aucune"
+        const ponderation = (ev as Record<string, unknown>).ponderation as number ?? 1
+        const risqueResiduel = ((ev as Record<string, unknown>).risqueResiduel as number | null)
+            ?? ev.frequence * ev.gravite * getPonderation(niveauMaitrise)
+        const prioriteAction = ((ev as Record<string, unknown>).prioriteAction as string | null)
+            ?? calcIndicateurs(ev.frequence, ev.gravite, niveauMaitrise).prioriteAction
 
         return {
             id: ev.id,
             risqueNom: ev.risque.nom,
+            risqueDescription: ev.risque.description,
+            categorieCode: ev.risque.categorie.code,
             categorieNom: ev.risque.categorie.nom,
             uniteTravail: ev.uniteTravail,
             frequence: ev.frequence,
             gravite: ev.gravite,
-            niveauRisque: ev.niveauRisque,
-            mesuresAppliquees: mesures,
+            niveauRisque: ev.niveauRisque,      // risque brut = F × G
+            niveauMaitrise,
+            ponderation,
+            risqueResiduel,
+            prioriteAction,
+            actionRecommandee: mesuresSuggerees.join(", ") || null,
+            actionCorrective: (ev as Record<string, unknown>).actionCorrective as string | null ?? null,
+            delai: (ev as Record<string, unknown>).delai as string | null ?? null,
+            responsable: (ev as Record<string, unknown>).responsable as string | null ?? null,
             observations: ev.observations,
         }
     })
@@ -139,6 +173,7 @@ export async function getDuerpDetail(duerpId: string) {
         nextReviewDate: duerp.nextReviewDate?.toISOString() || null,
         pdfUrl: duerp.pdfUrl,
         company: {
+            id: duerp.company.id,
             name: duerp.company.name,
             siret: duerp.company.siret,
             address: duerp.company.address,
@@ -151,6 +186,7 @@ export async function getDuerpDetail(duerpId: string) {
             auditorName: duerp.company.auditor?.name || null,
         },
         evaluations,
+        internalNotes: duerp.internalNotes,
         signature: duerp.signedAt
             ? {
                 signedAt: duerp.signedAt.toISOString(),
@@ -158,5 +194,44 @@ export async function getDuerpDetail(duerpId: string) {
                 signerEmail: duerp.signer?.email || "",
             }
             : null,
+    }
+}
+
+/**
+ * Met à jour le niveau de maîtrise d'une évaluation
+ * et recalcule automatiquement pondération, risque résiduel et priorité d'action
+ */
+export async function updateEvaluationMaitrise(
+    evalId: string,
+    niveauMaitrise: string
+) {
+    try {
+        const session = await auth()
+        if (!session?.user?.email) return { error: "Non autorisé" }
+
+        const ev = await prisma.evaluationRisque.findUnique({
+            where: { id: evalId },
+            select: { frequence: true, gravite: true },
+        })
+        if (!ev) return { error: "Évaluation introuvable" }
+
+        const { ponderation, risqueResiduel, prioriteAction } = calcIndicateurs(
+            ev.frequence,
+            ev.gravite,
+            niveauMaitrise
+        )
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (prisma.evaluationRisque.update as any)({
+            where: { id: evalId },
+            data: { niveauMaitrise, ponderation, risqueResiduel, prioriteAction },
+        })
+
+        revalidatePath("/auditeur/duerp")
+        revalidatePath("/admin/duerp")
+        return { success: true, ponderation, risqueResiduel, prioriteAction }
+    } catch (error) {
+        console.error("Error updating maitrise:", error)
+        return { error: "Erreur lors de la mise à jour" }
     }
 }

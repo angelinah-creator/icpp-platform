@@ -7,36 +7,121 @@ import {
     StyleSheet,
 } from "@react-pdf/renderer"
 
-const colors = {
-    red: "#DC2626",
-    darkRed: "#991B1B",
-    dark: "#111827",
-    text: "#374151",
+const C = {
+    navy: "#0A1F5C",
+    blue: "#2B5ED4",
+    white: "#FFFFFF",
     muted: "#6B7280",
     border: "#D1D5DB",
-    white: "#FFFFFF",
-    bg: "#FEF2F2",
+    body: "#1A202C",
+    text: "#374151",
+    red: "#DC2626",
+    darkRed: "#991B1B",
+    redBg: "#FEF2F2",
+    redBdr: "#FECACA",
+    cardBg: "#F0F4FF",
 }
 
-const styles = StyleSheet.create({
-    page: { padding: 35, backgroundColor: colors.white, fontFamily: "Helvetica" },
-    header: { backgroundColor: colors.darkRed, padding: 20, marginBottom: 20, borderRadius: 4 },
-    headerTitle: { fontSize: 18, fontWeight: "bold", color: colors.white, textAlign: "center", marginBottom: 4 },
-    headerSubtitle: { fontSize: 10, color: "#FCA5A5", textAlign: "center" },
-    mainBox: { border: `3px solid ${colors.red}`, borderRadius: 6, padding: 25, marginBottom: 20, alignItems: "center" },
-    prohibitIcon: { width: 80, height: 80, borderRadius: 40, border: `4px solid ${colors.red}`, marginBottom: 15, alignItems: "center", justifyContent: "center" },
-    crossLine: { width: 60, height: 4, backgroundColor: colors.red, transform: "rotate(-45deg)" },
-    prohibitText: { fontSize: 22, fontWeight: "bold", color: colors.red, textAlign: "center", marginBottom: 8 },
-    subProhibitText: { fontSize: 14, fontWeight: "bold", color: colors.darkRed, textAlign: "center", marginBottom: 20 },
-    legalBox: { backgroundColor: colors.bg, border: `1px solid #FECACA`, borderRadius: 4, padding: 15, marginBottom: 15, width: "100%" },
-    legalTitle: { fontSize: 10, fontWeight: "bold", color: colors.darkRed, marginBottom: 6 },
-    legalText: { fontSize: 9, color: colors.dark, lineHeight: 1.5, marginBottom: 4 },
-    penalBox: { backgroundColor: "#FEE2E2", border: `1px solid #FECACA`, borderRadius: 3, padding: 10, marginBottom: 10, width: "100%" },
-    penalText: { fontSize: 8.5, color: colors.darkRed, lineHeight: 1.4 },
-    infoSection: { marginTop: 15, padding: 12, backgroundColor: "#F9FAFB", borderRadius: 4, border: `1px solid ${colors.border}` },
-    infoTitle: { fontSize: 10, fontWeight: "bold", color: colors.dark, marginBottom: 6 },
-    infoText: { fontSize: 8.5, color: colors.text, lineHeight: 1.4, marginBottom: 3 },
-    footer: { position: "absolute", bottom: 20, left: 35, right: 35, textAlign: "center", fontSize: 7, color: colors.muted, paddingTop: 8, borderTop: `1px solid ${colors.border}` },
+const s = StyleSheet.create({
+    page: {
+        backgroundColor: C.white,
+        fontFamily: "Helvetica",
+        paddingBottom: 50,
+    },
+    blueBand: { height: 10, backgroundColor: C.blue },
+    body: { padding: 30 },
+    logoBlock: { marginBottom: 14 },
+    logoBadge: {
+        backgroundColor: C.navy,
+        borderRadius: 4,
+        padding: 6,
+        width: 70,
+        alignItems: "center",
+        marginBottom: 6,
+    },
+    logoIcpp: { fontSize: 11, fontFamily: "Helvetica-Bold", color: C.white },
+    logoSub: { fontSize: 4.5, color: "#A0AEC0", textAlign: "center", lineHeight: 1.3 },
+    logoLine: { width: 30, height: 2, backgroundColor: C.blue, marginBottom: 8 },
+    bigTitle: { fontSize: 18, fontFamily: "Helvetica-Bold", color: C.body, marginBottom: 2 },
+    bigSub: { fontSize: 9, color: C.muted, marginBottom: 14 },
+
+    // Pictogramme interdit
+    prohibitCircle: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        borderWidth: 6,
+        borderColor: C.red,
+        alignSelf: "center",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 14,
+    },
+    prohibitInnerBar: {
+        width: 55,
+        height: 8,
+        backgroundColor: C.red,
+        transform: "rotate(-45deg)",
+    },
+    prohibitText: {
+        fontSize: 24,
+        fontFamily: "Helvetica-Bold",
+        color: C.red,
+        textAlign: "center",
+        marginBottom: 6,
+    },
+    prohibitSub: {
+        fontSize: 16,
+        fontFamily: "Helvetica-Bold",
+        color: C.darkRed,
+        textAlign: "center",
+        marginBottom: 20,
+    },
+
+    legalCard: {
+        backgroundColor: C.redBg,
+        borderWidth: 1,
+        borderColor: C.redBdr,
+        borderRadius: 6,
+        padding: 14,
+        marginBottom: 12,
+    },
+    legalTitle: { fontSize: 9, fontFamily: "Helvetica-Bold", color: C.darkRed, marginBottom: 6 },
+    legalText: { fontSize: 8.5, color: C.body, lineHeight: 1.5, marginBottom: 4 },
+
+    penalBox: {
+        backgroundColor: "#FEE2E2",
+        borderWidth: 1,
+        borderColor: C.redBdr,
+        borderRadius: 4,
+        padding: 10,
+        marginBottom: 10,
+    },
+    penalText: { fontSize: 8, color: C.darkRed, lineHeight: 1.4, marginBottom: 2 },
+
+    infoBox: {
+        backgroundColor: "#F9FAFB",
+        borderWidth: 1,
+        borderColor: C.border,
+        borderRadius: 4,
+        padding: 12,
+        marginTop: 12,
+    },
+    infoTitle: { fontSize: 9, fontFamily: "Helvetica-Bold", color: C.body, marginBottom: 6 },
+    infoText: { fontSize: 8.5, color: C.text, lineHeight: 1.4, marginBottom: 3 },
+
+    footer: {
+        position: "absolute",
+        bottom: 14,
+        left: 30,
+        right: 30,
+        textAlign: "center",
+        fontSize: 7,
+        color: C.muted,
+        borderTopWidth: 1,
+        borderTopColor: C.border,
+        paddingTop: 6,
+    },
 })
 
 interface Fiche3Props {
@@ -46,59 +131,68 @@ interface Fiche3Props {
 export function Fiche3InterdictionFumer({ company }: Fiche3Props) {
     return (
         <Document>
-            <Page size="A4" style={styles.page}>
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>INTERDICTION DE FUMER ET DE VAPOTER</Text>
-                    <Text style={styles.headerSubtitle}>Affichage obligatoire — {company.name}</Text>
-                </View>
-
-                <View style={styles.mainBox}>
-                    {/* Pictogramme simplifié */}
-                    <View style={styles.prohibitIcon}>
-                        <View style={styles.crossLine} />
+            <Page size="A4" style={s.page}>
+                <View style={s.blueBand} />
+                <View style={s.body}>
+                    {/* Logo header */}
+                    <View style={s.logoBlock}>
+                        <View style={s.logoBadge}>
+                            <Text style={s.logoIcpp}>▶ ICPP</Text>
+                            <Text style={s.logoSub}>CONFORMITÉ{"\n"}INSTITUT DE CONFORMITÉ ET DE{"\n"}PRÉVENTION DES PROFESSIONNELS</Text>
+                        </View>
+                        <View style={s.logoLine} />
+                        <Text style={s.bigTitle}>Affichage obligatoire</Text>
+                        <Text style={s.bigSub}>Interdiction de fumer & vapoter — {company.name}</Text>
                     </View>
 
-                    <Text style={styles.prohibitText}>INTERDICTION DE FUMER</Text>
-                    <Text style={styles.subProhibitText}>ET DE VAPOTER</Text>
+                    {/* Pictogramme */}
+                    <View style={s.prohibitCircle}>
+                        <View style={s.prohibitInnerBar} />
+                    </View>
+                    <Text style={s.prohibitText}>INTERDICTION DE FUMER</Text>
+                    <Text style={s.prohibitSub}>ET DE VAPOTER</Text>
 
-                    <View style={styles.legalBox}>
-                        <Text style={styles.legalTitle}>Références légales</Text>
-                        <Text style={styles.legalText}>
+                    {/* Références légales */}
+                    <View style={s.legalCard}>
+                        <Text style={s.legalTitle}>Références légales</Text>
+                        <Text style={s.legalText}>
                             Article R3512-2 du Code de la santé publique : « Il est interdit de fumer dans les lieux affectés à un usage collectif, notamment les lieux fermés et couverts qui constituent des lieux de travail. »
                         </Text>
-                        <Text style={styles.legalText}>
+                        <Text style={s.legalText}>
                             Article L3513-6 du Code de la santé publique : « Il est interdit de vapoter dans les lieux de travail fermés et couverts à usage collectif. »
                         </Text>
-                        <Text style={styles.legalText}>
+                        <Text style={s.legalText}>
                             Décret n° 2017-633 du 25 avril 2017 relatif aux conditions d'application de l'interdiction de vapoter.
                         </Text>
                     </View>
 
-                    <View style={styles.penalBox}>
-                        <Text style={styles.penalText}>
+                    {/* Sanctions */}
+                    <View style={s.penalBox}>
+                        <Text style={s.penalText}>
                             Sanctions : amende forfaitaire de 68 € pour le fumeur/vapoteur en infraction (article R3512-1).
                         </Text>
-                        <Text style={styles.penalText}>
+                        <Text style={s.penalText}>
                             L'employeur qui ne met pas en place la signalisation s'expose à une amende de 450 € (article R3515-7).
+                        </Text>
+                    </View>
+
+                    {/* Rappel */}
+                    <View style={s.infoBox}>
+                        <Text style={s.infoTitle}>Rappel aux salariés</Text>
+                        <Text style={s.infoText}>
+                            Cette interdiction s'applique dans l'ensemble des locaux de l'entreprise, y compris les bureaux individuels.
+                        </Text>
+                        <Text style={s.infoText}>
+                            Des espaces fumeurs peuvent être aménagés à l'extérieur des bâtiments, conformément à la réglementation.
+                        </Text>
+                        <Text style={s.infoText}>
+                            Pour toute aide au sevrage tabagique : Tabac Info Service — 3989 (appel non surtaxé).
                         </Text>
                     </View>
                 </View>
 
-                <View style={styles.infoSection}>
-                    <Text style={styles.infoTitle}>Rappel aux salariés</Text>
-                    <Text style={styles.infoText}>
-                        Cette interdiction s'applique dans l'ensemble des locaux de l'entreprise, y compris les bureaux individuels.
-                    </Text>
-                    <Text style={styles.infoText}>
-                        Des espaces fumeurs peuvent être aménagés à l'extérieur des bâtiments, conformément à la réglementation.
-                    </Text>
-                    <Text style={styles.infoText}>
-                        Pour toute aide au sevrage tabagique : Tabac Info Service — 3989 (appel non surtaxé).
-                    </Text>
-                </View>
-
-                <Text style={styles.footer}>
-                    Document ICPP — Affichage obligatoire — À afficher de manière visible dans tous les bâtiments de l'entreprise
+                <Text style={s.footer}>
+                    Affichage obligatoire — Code du travail · ICPP Conformité réglementaire — À afficher de manière visible
                 </Text>
             </Page>
         </Document>

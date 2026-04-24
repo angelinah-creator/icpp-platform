@@ -17,10 +17,13 @@ import {
     AlertCircle,
     Receipt,
     Settings,
+    Menu,
+    X,
     type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { logoutAction } from "@/server/actions/auth"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 
 const iconMap: Record<string, LucideIcon> = {
     LayoutDashboard,
@@ -46,11 +49,13 @@ interface DashboardLayoutShellProps {
     planPrice: number
     navItems: NavItem[]
     children: ReactNode
+    isSuspended?: boolean
 }
 
-export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, children }: DashboardLayoutShellProps) {
+export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, children, isSuspended }: DashboardLayoutShellProps) {
     const pathname = usePathname()
     const [collapsed, setCollapsed] = useState(false)
+    const [mobileOpen, setMobileOpen] = useState(false)
 
     const getInitials = (name: string) => {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -63,23 +68,102 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
 
     return (
         <div className="flex h-screen overflow-hidden">
-            {/* Sidebar */}
+            {/* ── Mobile backdrop ── */}
+            {mobileOpen && (
+                <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setMobileOpen(false)} />
+            )}
+
+            {/* ── Mobile top bar ── */}
+            <header className="lg:hidden fixed top-0 inset-x-0 z-30 flex items-center justify-between bg-white border-b border-slate-200 px-4 py-3">
+                <button
+                    onClick={() => setMobileOpen(true)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                    aria-label="Ouvrir le menu"
+                >
+                    <Menu className="h-5 w-5" />
+                </button>
+                <div className="flex items-center gap-2">
+                    <Image src="/logo.png" alt="ICPP Client" width={28} height={28} className="h-7 w-auto object-contain" priority />
+                    <span className="text-lg font-black tracking-tight text-blue-600">ICPP <span className="text-sky-400">Client</span></span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <NotificationBell />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
+                        {getInitials(userName)}
+                    </div>
+                </div>
+            </header>
+
+            {/* ── Mobile drawer ── */}
             <div
                 className={cn(
-                    "flex h-screen flex-col bg-white border-r border-slate-200 flex-shrink-0 transition-all duration-300 ease-in-out",
+                    "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 ease-in-out lg:hidden",
+                    mobileOpen ? "translate-x-0" : "-translate-x-full"
+                )}
+            >
+                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                        <Image src="/logo.png" alt="ICPP Client" width={28} height={28} className="h-7 w-auto object-contain" priority />
+                        <span className="text-xl font-black tracking-tight text-blue-600">ICPP <span className="text-sky-400">Client</span></span>
+                    </div>
+                    <button onClick={() => setMobileOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+                <nav className="flex-1 space-y-1 p-4 overflow-y-auto no-scrollbar">
+                    {navItems.map((item) => {
+                        const Icon = iconMap[item.iconName] || LayoutDashboard
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => setMobileOpen(false)}
+                                className={cn(
+                                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                                    isActive(item.href) ? "bg-gradient-to-r from-[#2048BF] to-[#679CFF] text-white" : "text-slate-700 hover:bg-slate-100"
+                                )}
+                            >
+                                <Icon className="h-5 w-5 flex-shrink-0" />
+                                {item.label}
+                            </Link>
+                        )
+                    })}
+                </nav>
+                <div className="border-t border-slate-200 p-4">
+                    <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3 mb-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white flex-shrink-0">
+                            {getInitials(userName)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-900 truncate">{userName}</p>
+                            <p className="text-xs text-slate-500">{userPlan}</p>
+                        </div>
+                    </div>
+                    <form action={logoutAction}>
+                        <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">
+                            <LogOut className="h-4 w-4" />
+                            Déconnexion
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            {/* ── Desktop Sidebar ── */}
+            <div
+                className={cn(
+                    "hidden lg:flex h-screen sticky top-0 flex-col bg-white border-r border-slate-200 flex-shrink-0 transition-all duration-300 ease-in-out",
                     collapsed ? "w-[72px]" : "w-64"
                 )}
             >
                 {/* Logo + Toggle */}
                 <div className={cn("flex items-center border-b border-slate-200", collapsed ? "justify-center px-2 py-4" : "justify-between px-6 py-4")}>
-                    {!collapsed && (
-                        <Image
-                            src="/assets/maquettes client/logo_icpp_client.png"
-                            alt="ICPP Client"
-                            width={120}
-                            height={32}
-                            className="h-8 w-auto"
-                        />
+                    {!collapsed ? (
+                        <div className="flex items-center gap-3">
+                            <Image src="/logo.png" alt="ICPP Client" width={32} height={32} className="h-8 w-auto object-contain" priority />
+                            <span className="text-xl font-black tracking-tight text-blue-600">ICPP <span className="text-sky-400">Client</span></span>
+                        </div>
+                    ) : (
+                        <Image src="/logo.png" alt="ICPP Client" width={28} height={28} className="h-7 w-auto object-contain" priority />
                     )}
                     <button
                         onClick={() => setCollapsed(!collapsed)}
@@ -91,7 +175,7 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
+                <nav className="flex-1 space-y-1 p-4 overflow-y-auto no-scrollbar">
                     {navItems.map((item) => {
                         const Icon = iconMap[item.iconName] || LayoutDashboard
                         return (
@@ -102,7 +186,7 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
                                 className={cn(
                                     "flex items-center rounded-lg text-sm font-medium transition-colors",
                                     isActive(item.href)
-                                        ? "bg-blue-600 text-white"
+                                        ? "bg-gradient-to-r from-[#2048BF] to-[#679CFF] text-white"
                                         : "text-slate-700 hover:bg-slate-100",
                                     collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5"
                                 )}
@@ -119,23 +203,34 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
                     {/* Plan Badge */}
                     {!collapsed ? (
                         <div
-                            className="mb-3 rounded-2xl p-4 border border-blue-200 bg-cover bg-center bg-no-repeat"
-                            style={{ backgroundImage: 'url(/assets/maquettes%20client/fond%20plan%20premium.png)' }}
+                            className={cn(
+                                "mb-3 rounded-2xl p-4 border bg-cover bg-center bg-no-repeat transition-all",
+                                isSuspended
+                                    ? "border-red-200 bg-red-50 grayscale"
+                                    : "border-blue-200"
+                            )}
+                            style={!isSuspended ? { backgroundImage: 'url(/assets/maquettes%20client/fond%20plan%20premium.png)' } : {}}
                         >
                             <div className="flex items-center gap-3 mb-3">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm" style={{ backgroundColor: '#244DC338' }}>
-                                    <CreditCard className="h-6 w-6 text-blue-600" />
+                                <div className={cn(
+                                    "flex h-12 w-12 items-center justify-center rounded-xl shadow-sm",
+                                    isSuspended ? "bg-red-100" : "bg-blue-100"
+                                )} style={!isSuspended ? { backgroundColor: '#244DC338' } : {}}>
+                                    <CreditCard className={cn("h-6 w-6", isSuspended ? "text-red-600" : "text-blue-600")} />
                                 </div>
-                                <div>
-                                    <p className="text-base font-semibold text-slate-900">Plan premium</p>
+                                <div className="min-w-0">
+                                    <p className="text-base font-semibold text-slate-900 truncate">{userPlan}</p>
                                     <p className="text-sm text-slate-600">{Math.round(planPrice / 100)}€/mois</p>
                                 </div>
                             </div>
                             <button
-                                className="w-full text-white font-medium rounded-xl py-2.5 text-sm transition-opacity hover:opacity-90"
-                                style={{ background: 'linear-gradient(135deg, #244DC3 0%, #4B8EF2 100%)' }}
+                                className={cn(
+                                    "w-full text-white font-medium rounded-xl py-2.5 text-sm transition-opacity hover:opacity-90",
+                                    isSuspended ? "bg-red-600" : ""
+                                )}
+                                style={!isSuspended ? { background: 'linear-gradient(135deg, #244DC3 0%, #4B8EF2 100%)' } : {}}
                             >
-                                Voir mon abonnement
+                                {isSuspended ? "Abonnement suspendu" : "Voir mon abonnement"}
                             </button>
                         </div>
                     ) : (
@@ -149,6 +244,9 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
                     {/* User Profile */}
                     {collapsed ? (
                         <div className="flex flex-col items-center gap-3">
+                            <div className="flex justify-center w-full mb-2">
+                                <NotificationBell />
+                            </div>
                             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white" title={userName}>
                                 {getInitials(userName)}
                             </div>
@@ -168,6 +266,9 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
                                     <p className="text-sm font-medium text-slate-900 truncate">{userName}</p>
                                     <p className="text-xs text-slate-500">{userPlan}</p>
                                 </div>
+                                <div className="flex-shrink-0">
+                                    <NotificationBell />
+                                </div>
                             </div>
                             <form action={logoutAction}>
                                 <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">
@@ -181,8 +282,36 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
             </div>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto bg-slate-50">
-                {children}
+            <main className="relative flex-1 min-w-0 h-screen overflow-y-auto bg-slate-50 pt-14 lg:pt-0">
+                {isSuspended && (
+                    <div className="bg-red-50 border-b border-red-200 p-4 sticky top-0 z-50">
+                        <div className="max-w-7xl mx-auto flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-red-100 p-2 rounded-full">
+                                    <span className="text-red-600 font-bold">!</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                    <div>
+                                        <h3 className="text-red-800 font-medium">Votre abonnement est suspendu</h3>
+                                        <p className="text-red-600 text-sm">Veuillez régulariser votre situation pour retrouver un accès complet.</p>
+                                    </div>
+                                    <Link
+                                        href="/abonnement"
+                                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 transition-colors"
+                                    >
+                                        Se réabonner
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <div className={cn(
+                    "min-h-full",
+                    isSuspended ? "pointer-events-none opacity-50 contrast-50 grayscale select-none" : ""
+                )}>
+                    {children}
+                </div>
             </main>
         </div>
     )

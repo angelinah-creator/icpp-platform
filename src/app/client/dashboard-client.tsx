@@ -64,11 +64,16 @@ export function DashboardClient({ data }: DashboardClientProps) {
 
                         <div className="flex flex-col lg:flex-row gap-8">
                             {/* Gauge */}
-                            <div className="flex-shrink-0">
-                                <ComplianceGauge score={data.complianceScore} label="Conforme" />
-                                <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white">
-                                    Attestation active
-                                </Button>
+                            <div className="flex-shrink-0 w-full lg:w-auto">
+                                <ComplianceGauge
+                                    score={data.complianceScore}
+                                    label={data.complianceLevel}
+                                    companyName={data.companyName}
+                                    planName={data.subscription.plan}
+                                    startDate={data.subscription.startDate}
+                                    endDate={data.subscription.endDate}
+                                    isSuspended={data.subscription.status !== "ACTIVE" && data.subscription.status !== "TRIALING"}
+                                />
                             </div>
 
                             {/* Checklist */}

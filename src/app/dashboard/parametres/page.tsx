@@ -12,7 +12,12 @@ async function getProfileData() {
         include: {
             company: {
                 include: {
-                    subscription: true
+                    subscription: true,
+                    audits: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 1,
+                        select: { proposedPrice: true }
+                    }
                 }
             }
         }
@@ -30,6 +35,9 @@ async function getProfileData() {
         companyCity: user.company?.city || "",
         planName: user.company?.subscription?.planCode || null,
         planStatus: user.company?.subscription?.status || null,
+        customPrice: user.company?.subscription?.customPrice || null,
+        proposedPrice: user.company?.audits?.[0]?.proposedPrice || null,
+        stripeCustomerId: user.company?.subscription?.stripeCustomerId || null,
     }
 }
 

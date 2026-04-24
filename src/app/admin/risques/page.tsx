@@ -1,6 +1,7 @@
 import Link from "next/link"
-import { Shield, AlertTriangle, ArrowRight, Bell } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ArrowRight, Shield, AlertTriangle } from "lucide-react"
+import { AdminHeader } from "@/components/admin/admin-header"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getRisqueCategories, getRisquesMetier } from "@/server/actions/admin"
 
@@ -14,17 +15,11 @@ export default async function RisquesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Gestion des Risques</h1>
-                    <p className="text-sm text-slate-500 mt-1">
-                        Référentiel des risques professionnels par métier
-                    </p>
-                </div>
-                <Button variant="ghost" size="icon" className="relative">
-                    <Bell className="h-5 w-5 text-slate-600" />
-                </Button>
-            </div>
+            <AdminHeader
+                title="Gestion des Risques"
+                subtitle="Référentiel des risques professionnels par métier"
+            />
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Link href="/admin/risques/categories">

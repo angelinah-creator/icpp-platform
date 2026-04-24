@@ -21,6 +21,8 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { updateSignalementStatus, deleteSignalement, assignSignalementAsTache, getUsersByRole } from "@/server/actions/admin"
+import { AdminHeader } from "@/components/admin/admin-header"
+
 
 interface AssignedTask {
     id: string
@@ -189,27 +191,14 @@ export function SignalementsClient({ initialSignalements }: SignalementsClientPr
 
     return (
         <div className="space-y-6 relative">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Signalements clients</h1>
-                    <p className="text-sm text-slate-500 mt-1">
-                        Gérez et assignez les signalements comme tâches aux collaborateurs
-                    </p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-5 w-5 text-slate-600" />
-                        {stats.nouveaux > 0 && (
-                            <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
-                                {stats.nouveaux}
-                            </span>
-                        )}
-                    </Button>
-                </div>
-            </div>
+            <AdminHeader
+                title="Signalements clients"
+                subtitle="Gérez et assignez les signalements comme tâches aux collaborateurs"
+            />
+
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
                     <div className="flex items-center gap-3">
                         <AlertCircle className="h-5 w-5 text-blue-500" />

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Bell, Filter, AlertCircle, Clock, CheckCircle, User, Wrench, MapPin } from "lucide-react"
+import { Search, Filter, AlertCircle, Clock, CheckCircle, User, Wrench, MapPin } from "lucide-react"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -110,12 +111,7 @@ export function SignalementsClient({ initialSignalements }: SignalementsClientPr
                         </div>
 
                         {/* Notifications */}
-                        <Button variant="ghost" size="icon" className="relative">
-                            <Bell className="h-5 w-5 text-slate-600" />
-                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
-                                {stats.nouveaux}
-                            </span>
-                        </Button>
+                        <NotificationBell />
                     </div>
                 </div>
             </header>
@@ -123,7 +119,7 @@ export function SignalementsClient({ initialSignalements }: SignalementsClientPr
             {/* Main Content */}
             <div className="p-8">
                 {/* Stats Cards */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     {/* Nouveaux signalements */}
                     <div className="bg-red-50 border border-red-100 rounded-lg p-4">
                         <div className="flex items-center gap-3">

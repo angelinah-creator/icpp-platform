@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth-helpers"
-import { getCompanyDetailForAuditeur } from "@/server/actions/client"
+import { getCompanyDetailForAuditeur, getMetiersForAuditeur, getPlansForAuditeur } from "@/server/actions/client"
 import { EntrepriseDetailClient } from "./entreprise-detail-client"
 
 export default async function EntrepriseDetailPage({ params }: { params: { id: string } }) {
@@ -9,11 +9,21 @@ export default async function EntrepriseDetailPage({ params }: { params: { id: s
         redirect("/login")
     }
 
-    const company = await getCompanyDetailForAuditeur(params.id)
+    const [company, metiers, plans] = await Promise.all([
+        getCompanyDetailForAuditeur(params.id),
+        getMetiersForAuditeur(),
+        getPlansForAuditeur()
+    ])
 
     if (!company) {
         notFound()
     }
 
-    return <EntrepriseDetailClient company={company} />
+    return <EntrepriseDetailClient 
+        company={company} 
+        metiers={metiers} 
+        plans={plans} 
+        currentUserId={user.id}
+        currentUserRole={user.role}
+    />
 }

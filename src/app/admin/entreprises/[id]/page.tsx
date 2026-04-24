@@ -1,10 +1,15 @@
 import { notFound } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { getInternalNotes } from "@/server/actions/admin"
 import { EntrepriseDetailClient } from "./entreprise-detail-client"
 
 export default async function EntrepriseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
-    const [company, plans, metiers] = await Promise.all([
+    const session = await auth()
+    const currentUser = session?.user
+
+    const [company, plans, metiers, notes] = await Promise.all([
         prisma.company.findUnique({
             where: { id },
             include: {
@@ -38,7 +43,8 @@ export default async function EntrepriseDetailPage({ params }: { params: Promise
         prisma.metierICPP.findMany({
             where: { isActive: true },
             orderBy: { nom: "asc" as const }
-        })
+        }),
+        getInternalNotes(id)
     ])
 
     if (!company) {
@@ -61,6 +67,9 @@ export default async function EntrepriseDetailPage({ params }: { params: Promise
             company={company}
             plans={plansData}
             metiers={metiersData}
+            notes={notes as any}
+            currentUserId={currentUser?.id ?? ""}
+            currentUserRole={currentUser?.role ?? ""}
         />
     )
 }

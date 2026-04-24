@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Search, Plus, MoreHorizontal, Bell, Check, Eye, Edit, Trash2 } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Bell, Check, Eye, Edit, Trash2, MessageSquare } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,6 +35,8 @@ import { Badge } from "@/components/ui/badge"
 import { AddClientModal } from "@/components/admin/add-client-modal"
 import { EditCompanyModal } from "@/components/admin/edit-company-modal"
 import { deleteCompany } from "@/server/actions/admin"
+import { AdminHeader } from "@/components/admin/admin-header"
+
 
 interface Company {
     id: string
@@ -42,6 +44,8 @@ interface Company {
     email: string
     activite: string
     abonnement: string
+    abonnementCode?: string
+    abonnementStatus?: string
     statutConformite: string
     duerp: string
     createdAt: Date
@@ -157,28 +161,11 @@ export function EntreprisesClient({ initialCompanies, plans, metiers }: Entrepri
 
     return (
         <div className="space-y-6 relative">
-            {/* Page Header with Search and Notifications */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Gestion des entreprises accompagnées</h1>
-                    <p className="text-sm text-slate-500 mt-1">
-                        {initialCompanies.length} entreprise{initialCompanies.length > 1 ? "s" : ""} enregistrée{initialCompanies.length > 1 ? "s" : ""}
-                    </p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input
-                            placeholder="Rechercher ..."
-                            className="pl-10 w-48 bg-white"
-                        />
-                    </div>
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-5 w-5 text-slate-600" />
-                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">1</span>
-                    </Button>
-                </div>
-            </div>
+            <AdminHeader
+                title="Gestion des entreprises accompagnées"
+                subtitle={`${initialCompanies.length} entreprise${initialCompanies.length > 1 ? "s" : ""} enregistrée${initialCompanies.length > 1 ? "s" : ""}`}
+            />
+
 
             {/* Search Bar and Filter + Add Button Row */}
             <div className="flex items-center justify-between">
@@ -255,6 +242,12 @@ export function EntreprisesClient({ initialCompanies, plans, metiers }: Entrepri
                                                 <Link href={`/admin/entreprises/${company.id}`} className="flex items-center gap-2 cursor-pointer">
                                                     <Eye className="h-4 w-4" />
                                                     Voir le dossier
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                                <Link href={`/admin/entreprises/${company.id}#notes-internes`} className="flex items-center gap-2 cursor-pointer text-amber-600">
+                                                    <MessageSquare className="h-4 w-4" />
+                                                    Notes internes
                                                 </Link>
                                             </DropdownMenuItem>
                                             <div onClick={(e) => e.stopPropagation()}>

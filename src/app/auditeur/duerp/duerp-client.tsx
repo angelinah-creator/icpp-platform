@@ -2,10 +2,13 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Search, Filter, MoreHorizontal, Download, Eye, FileText } from "lucide-react"
+import { Search, Filter, MoreHorizontal, Download, Eye, FileText, MessageSquare } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+
 import { Badge } from "@/components/ui/badge"
+import { NotificationBell } from "@/components/notifications/notification-bell"
+
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -66,6 +69,9 @@ export function DuerpClient({ initialDuerps }: { initialDuerps: Duerp[] }) {
                         <p className="text-sm text-slate-500">
                             Consultez et signez les Documents Uniques — {initialDuerps.length} document{initialDuerps.length > 1 ? "s" : ""}
                         </p>
+                    </div>
+                    <div>
+                        <NotificationBell />
                     </div>
                 </div>
             </header>
@@ -160,6 +166,12 @@ export function DuerpClient({ initialDuerps }: { initialDuerps: Duerp[] }) {
                                                         <Link href={`/auditeur/duerp/${duerp.id}`}>
                                                             <Eye className="h-4 w-4 mr-2" />
                                                             Voir détails / Signer
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem asChild className="cursor-pointer text-amber-600 focus:text-amber-600">
+                                                        <Link href={`/auditeur/duerp/${duerp.id}#notes-internes`} className="flex items-center gap-2">
+                                                            <MessageSquare className="h-4 w-4" />
+                                                            Notes internes
                                                         </Link>
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem asChild>

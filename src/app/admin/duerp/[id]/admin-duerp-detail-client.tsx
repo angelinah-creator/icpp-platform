@@ -4,18 +4,11 @@ import Link from "next/link"
 import { ArrowLeft, Building2, Calendar, Download, FileText, Shield, Users, AlertTriangle, ShieldCheck, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { DuerpRisquesParCategorie, DuerpPlanAction, DuerpSignatureFooter, type EvaluationItem } from "@/components/duerp/risques-view"
+import { InternalNotesPanel, type InternalNote } from "@/components/admin/internal-notes-panel"
 
-interface Evaluation {
-    id: string
-    risqueNom: string
-    categorieNom: string
-    uniteTravail: string
-    frequence: number
-    gravite: number
-    niveauRisque: number
-    mesuresAppliquees: string[]
-    observations: string | null
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface Evaluation extends EvaluationItem { }
 
 interface DuerpData {
     id: string
@@ -45,16 +38,28 @@ interface DuerpData {
     } | null
 }
 
-function getRiskBadge(niveau: number) {
-    if (niveau >= 16) return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Critique ({niveau})</Badge>
-    if (niveau >= 8) return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Modéré ({niveau})</Badge>
-    return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Faible ({niveau})</Badge>
+function getRiskBadge(risqueResiduel: number) {
+    if (risqueResiduel >= 12) return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Critique ({risqueResiduel})</Badge>
+    if (risqueResiduel >= 8) return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Élevé ({risqueResiduel})</Badge>
+    if (risqueResiduel >= 4) return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">Modéré ({risqueResiduel})</Badge>
+    return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Faible ({risqueResiduel})</Badge>
 }
 
-export function AdminDuerpDetailClient({ duerp }: { duerp: DuerpData }) {
+export function AdminDuerpDetailClient({
+    duerp,
+    notes = [],
+    currentUserId = "",
+    currentUserRole = "",
+}: {
+    duerp: DuerpData
+    notes?: InternalNote[]
+    currentUserId?: string
+    currentUserRole?: string
+}) {
     const totalRisques = duerp.evaluations.length
-    const critiques = duerp.evaluations.filter((e) => e.niveauRisque >= 16).length
-    const moderes = duerp.evaluations.filter((e) => e.niveauRisque >= 8 && e.niveauRisque < 16).length
+    const critiques = duerp.evaluations.filter((e) => (e.risqueResiduel ?? e.niveauRisque) >= 12).length
+    const eleves = duerp.evaluations.filter((e) => { const r = e.risqueResiduel ?? e.niveauRisque; return r >= 8 && r < 12 }).length
+    const moderes = duerp.evaluations.filter((e) => { const r = e.risqueResiduel ?? e.niveauRisque; return r >= 4 && r < 8 }).length
 
     const grouped: Record<string, Evaluation[]> = {}
     for (const ev of duerp.evaluations) {
@@ -66,7 +71,7 @@ export function AdminDuerpDetailClient({ duerp }: { duerp: DuerpData }) {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-start gap-3">
                 <Link href="/admin/duerp" className="text-slate-400 hover:text-slate-600 transition-colors">
                     <ArrowLeft className="h-5 w-5" />
                 </Link>
@@ -102,7 +107,7 @@ export function AdminDuerpDetailClient({ duerp }: { duerp: DuerpData }) {
                 {/* Colonne principale */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Stats */}
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
                             <FileText className="h-5 w-5 text-blue-600 mx-auto mb-1" />
                             <p className="text-2xl font-bold text-slate-900">{totalRisques}</p>
@@ -155,8 +160,8 @@ export function AdminDuerpDetailClient({ duerp }: { duerp: DuerpData }) {
                                                     <td className="px-3 py-3 text-center">{ev.gravite}</td>
                                                     <td className="px-3 py-3 text-center">{getRiskBadge(ev.niveauRisque)}</td>
                                                     <td className="px-4 py-3 text-slate-600">
-                                                        {ev.mesuresAppliquees.length > 0
-                                                            ? ev.mesuresAppliquees.join(", ")
+                                                        {ev.actionRecommandee
+                                                            ? ev.actionRecommandee
                                                             : <span className="text-slate-400 italic">Aucune</span>}
                                                     </td>
                                                 </tr>
@@ -173,6 +178,19 @@ export function AdminDuerpDetailClient({ duerp }: { duerp: DuerpData }) {
                             <p className="font-medium text-slate-900 mb-1">Aucune évaluation de risque</p>
                             <p className="text-sm text-slate-500">Les évaluations apparaîtront ici une fois ajoutées.</p>
                         </div>
+                    )}
+
+                    {/* Nouvelles sections : tableaux par catégorie + plan d'action + signatures */}
+                    {totalRisques > 0 && (
+                        <>
+                            <DuerpRisquesParCategorie evaluations={duerp.evaluations} />
+                            <DuerpPlanAction evaluations={duerp.evaluations} />
+                            <DuerpSignatureFooter
+                                signedAt={duerp.signature?.signedAt ?? null}
+                                signerName={duerp.signature?.signerName ?? null}
+                                companyCity={duerp.company.city}
+                            />
+                        </>
                     )}
                 </div>
 
@@ -301,6 +319,16 @@ export function AdminDuerpDetailClient({ duerp }: { duerp: DuerpData }) {
                             </a>
                         </div>
                     )}
+
+                    {/* Notes internes liées à ce DUERP */}
+                    <InternalNotesPanel
+                        companyId={(duerp as any).company?.id ?? ""}
+                        duerpId={duerp.id}
+                        initialNotes={notes}
+                        currentUserId={currentUserId}
+                        currentUserRole={currentUserRole}
+                        duerpContext
+                    />
                 </div>
             </div>
         </div>

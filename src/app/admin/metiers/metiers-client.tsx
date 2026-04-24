@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Plus, MoreHorizontal, Bell, Briefcase, Check, Eye, Power, Edit, Building2 } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Briefcase, Check, Eye, Power, Edit, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +22,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { AddMetierModal } from "@/components/admin/add-metier-modal"
 import { updateMetier, toggleMetierStatus, getMetierRisques } from "@/server/actions/admin"
+import { AdminHeader } from "@/components/admin/admin-header"
+
 
 interface Metier {
     id: string
@@ -151,26 +153,11 @@ export function MetiersClient({ initialMetiers }: MetiersClientProps) {
 
     return (
         <div className="space-y-6 relative">
-            {/* Page Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Gestion des métiers</h1>
-                    <p className="text-slate-500 mt-1">Paramétrez les métiers et types de risques</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input
-                            placeholder="Rechercher ..."
-                            className="pl-10 w-[300px] bg-slate-50 border-slate-200"
-                        />
-                    </div>
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-5 w-5 text-slate-600" />
-                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">1</span>
-                    </Button>
-                </div>
-            </div>
+            <AdminHeader
+                title="Gestion des métiers"
+                subtitle="Paramétrez les métiers et types de risques"
+            />
+
 
             {/* Search and Action Bar */}
             <div className="flex items-center justify-between gap-4 bg-slate-50/50 p-1 rounded-lg">

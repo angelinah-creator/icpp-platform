@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Plus, MoreHorizontal, Bell, Shield, Check, ChevronUp, ChevronDown, Trash2, Edit } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Shield, Check, ChevronUp, ChevronDown, Trash2, Edit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +37,7 @@ import {
     deleteRisqueCategorie,
     moveRisqueCategorie
 } from "@/server/actions/admin"
+import { AdminHeader } from "@/components/admin/admin-header"
 
 interface Categorie {
     id: string
@@ -161,19 +162,10 @@ export function CategoriesClient({ initialCategories }: CategoriesClientProps) {
 
     return (
         <div className="space-y-6 relative">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Catégories de Risques</h1>
-                    <p className="text-sm text-slate-500 mt-1">
-                        {initialCategories.length} catégorie{initialCategories.length > 1 ? "s" : ""}
-                    </p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-5 w-5 text-slate-600" />
-                    </Button>
-                </div>
-            </div>
+            <AdminHeader
+                title="Catégories de Risques"
+                subtitle={`${initialCategories.length} catégorie${initialCategories.length > 1 ? "s" : ""}`}
+            />
 
             <div className="flex items-center justify-between">
                 <div className="relative">

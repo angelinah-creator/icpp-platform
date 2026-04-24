@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { redirect } from "next/navigation"
+import { hasSubscriptionAccess } from "@/lib/subscription-access"
 
 // Validation schemas
 const loginSchema = z.object({
@@ -34,21 +35,44 @@ export async function loginAction(credentials: { email: string; password: string
     }
 
     try {
-        // Sign in without automatic redirect
-        const result = await signIn("credentials", {
+        // In NextAuth v5, signIn with redirect: false may throw AuthError on failure
+        // We catch it below in the catch block
+        await signIn("credentials", {
             email,
             password,
             redirect: false,
         })
-
-        if (result?.error) {
-            return { error: "Email ou mot de passe incorrect" }
+    } catch (signInError) {
+        // Check if this is a NEXT_REDIRECT thrown by signIn  
+        if (signInError && typeof signInError === 'object' && 'digest' in signInError) {
+            // Not expected here with redirect: false, but handle just in case
+        } else if (signInError instanceof AuthError) {
+            switch (signInError.type) {
+                case "CredentialsSignin":
+                    return { error: "Email ou mot de passe incorrect" }
+                default:
+                    return { error: "Une erreur est survenue lors de la connexion" }
+            }
+        } else {
+            // Unknown error
+            return { error: "Une erreur est survenue lors de la connexion" }
         }
+    }
 
+    try {
         // Get user from database to determine role
         const user = await prisma.user.findUnique({
             where: { email },
-            select: { role: true },
+            select: {
+                role: true,
+                company: {
+                    select: {
+                        subscription: {
+                            select: { status: true },
+                        },
+                    },
+                },
+            },
         })
 
         // Redirect based on role - 3 separate spaces
@@ -56,24 +80,18 @@ export async function loginAction(credentials: { email: string; password: string
             redirect("/admin")
         } else if (user?.role === "AUDITOR" || user?.role === "COMMERCIAL") {
             redirect("/auditeur")
+        } else if (user?.role === "TECHNICIEN") {
+            redirect("/technicien")
         } else {
+            // Dashboard enforces onboarding/restricted/full-access policies.
             redirect("/dashboard")
         }
     } catch (error) {
-        // Check if this is a redirect (Next.js throws NEXT_REDIRECT as an error)
+        // Re-throw NEXT_REDIRECT errors so the browser actually navigates
         if (error && typeof error === 'object' && 'digest' in error) {
-            throw error // Re-throw redirect errors
+            throw error
         }
-
-        if (error instanceof AuthError) {
-            switch (error.type) {
-                case "CredentialsSignin":
-                    return { error: "Email ou mot de passe incorrect" }
-                default:
-                    return { error: "Une erreur est survenue" }
-            }
-        }
-        throw error
+        return { error: "Une erreur est survenue lors de la redirection" }
     }
 }
 
@@ -143,7 +161,7 @@ export async function registerAction(formData: FormData) {
         await signIn("credentials", {
             email: data.email,
             password: data.password,
-            redirectTo: "/onboarding",
+            redirectTo: "/abonnement",
         })
 
         return { success: true }

@@ -1,11 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Bell, Filter, Clock, CheckCircle, AlertCircle, Circle, Building2, Calendar, Play } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import { Search, Filter, Clock, CheckCircle, AlertCircle, Circle, Building2, Calendar, Play, FileText, Send, Pencil } from "lucide-react"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { TacheData, updateTacheStatus } from "@/server/actions/taches"
+import { Textarea } from "@/components/ui/textarea"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog"
+import { TacheData, updateTacheStatus, saveRapportTache } from "@/server/actions/taches"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { toast } from "sonner"
@@ -33,16 +43,30 @@ const getStatusLabel = (status: string) => {
     }
 }
 
+interface TacheWithRapport extends TacheData {
+    rapport?: string | null
+    rapportStatut?: string | null
+}
+
 interface TachesClientProps {
-    initialTasks: TacheData[]
+    initialTasks: TacheWithRapport[]
 }
 
 export function TachesClient({ initialTasks = [] }: TachesClientProps) {
+    const searchParams = useSearchParams()
+    const view = searchParams.get("view")
+    const isRapportView = view === "rapports"
+
     const [searchQuery, setSearchQuery] = useState("")
-    const [tasks, setTasks] = useState<TacheData[]>(initialTasks || [])
+    const [tasks, setTasks] = useState<TacheWithRapport[]>(initialTasks || [])
+
+    // Rapport modal state
+    const [rapportModal, setRapportModal] = useState<{ open: boolean; tache: TacheWithRapport | null }>({ open: false, tache: null })
+    const [rapportText, setRapportText] = useState("")
+    const [isSavingRapport, setIsSavingRapport] = useState(false)
 
     // Handler to start a task (A_FAIRE -> EN_COURS)
-    const handleDemarrer = async (task: TacheData) => {
+    const handleDemarrer = async (task: TacheWithRapport) => {
         setTasks(prev => prev.map(t =>
             t.id === task.id ? { ...t, status: "EN_COURS" } : t
         ))
@@ -56,7 +80,7 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
     }
 
     // Handler to complete a task (EN_COURS -> TERMINEE)
-    const handleTerminer = async (task: TacheData) => {
+    const handleTerminer = async (task: TacheWithRapport) => {
         setTasks(prev => prev.map(t =>
             t.id === task.id ? { ...t, status: "TERMINEE" } : t
         ))
@@ -66,6 +90,48 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
             toast.success("Tâche terminée")
         } else {
             toast.error("Erreur lors de la clôture de la tâche")
+        }
+    }
+
+    // Open rapport modal
+    const handleOpenRapport = (tache: TacheWithRapport) => {
+        setRapportText(tache.rapport || "")
+        setRapportModal({ open: true, tache })
+    }
+
+    // Save rapport as draft
+    const handleSaveDraft = async () => {
+        if (!rapportModal.tache) return
+        setIsSavingRapport(true)
+        const result = await saveRapportTache(rapportModal.tache.id, rapportText, false)
+        setIsSavingRapport(false)
+        if (result.success) {
+            setTasks(prev => prev.map(t =>
+                t.id === rapportModal.tache!.id ? { ...t, rapport: rapportText, rapportStatut: "REDIGE" } : t
+            ))
+            toast.success("Brouillon enregistré")
+        } else {
+            toast.error(result.error || "Erreur")
+        }
+    }
+
+    // Send rapport to admin
+    const handleEnvoyer = async () => {
+        if (!rapportModal.tache || !rapportText.trim()) {
+            toast.error("Le rapport ne peut pas être vide")
+            return
+        }
+        setIsSavingRapport(true)
+        const result = await saveRapportTache(rapportModal.tache.id, rapportText, true)
+        setIsSavingRapport(false)
+        if (result.success) {
+            setTasks(prev => prev.map(t =>
+                t.id === rapportModal.tache!.id ? { ...t, rapport: rapportText, rapportStatut: "ENVOYE" } : t
+            ))
+            setRapportModal({ open: false, tache: null })
+            toast.success("Rapport envoyé à l'administrateur ✓")
+        } else {
+            toast.error(result.error || "Erreur lors de l'envoi")
         }
     }
 
@@ -82,14 +148,25 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
         t.entreprise.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
+    const displayTasks = isRapportView
+        ? filteredTasks.filter(t => t.status === "TERMINEE" || t.rapportStatut)
+        : filteredTasks
+
+    const activeTasks = displayTasks.filter(t => isRapportView || t.status !== "TERMINEE")
+    const doneTasks = displayTasks.filter(t => !isRapportView && t.status === "TERMINEE")
+
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Header */}
             <header className="bg-white border-b border-slate-200 px-8 py-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900">Mes tâches</h1>
-                        <p className="text-sm text-slate-500">Gérez vos tâches et priorités</p>
+                        <h1 className="text-2xl font-bold text-slate-900">
+                            {isRapportView ? "Mes rapports" : "Mes tâches"}
+                        </h1>
+                        <p className="text-sm text-slate-500">
+                            {isRapportView ? "Consultez et rédigez vos rapports d'intervention" : "Gérez vos tâches, priorités et rédigez vos rapports"}
+                        </p>
                     </div>
                     <div className="flex items-center gap-4">
                         {/* Search */}
@@ -98,17 +175,14 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                             <Input
                                 type="text"
                                 placeholder="Rechercher..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-64 bg-slate-50 pl-10 border-slate-200"
                             />
                         </div>
 
                         {/* Notifications */}
-                        <Button variant="ghost" size="icon" className="relative">
-                            <Bell className="h-5 w-5 text-slate-600" />
-                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
-                                {stats.aFaire}
-                            </span>
-                        </Button>
+                        <NotificationBell />
                     </div>
                 </div>
             </header>
@@ -118,47 +192,40 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-4 gap-4 mb-6">
                     {/* À faire */}
-                    <div className="bg-white border border-slate-200 rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                            <Circle className="h-5 w-5 text-slate-400" />
-                            <div>
-                                <p className="text-3xl font-bold text-slate-900">{stats.aFaire}</p>
-                                <p className="text-sm text-slate-500">À faire</p>
-                            </div>
+                    <div className="bg-white rounded-lg border border-slate-200 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-slate-600">À faire</span>
+                            <Circle className="h-4 w-4 text-slate-400" />
                         </div>
+                        <p className="text-2xl font-bold text-slate-900">{stats.aFaire}</p>
+                        <p className="text-xs text-slate-500 mt-1">tâches en attente</p>
                     </div>
-
                     {/* En cours */}
-                    <div className="bg-white border border-slate-200 rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                            <Clock className="h-5 w-5 text-orange-500" />
-                            <div>
-                                <p className="text-3xl font-bold text-slate-900">{stats.enCours}</p>
-                                <p className="text-sm text-slate-500">En cours</p>
-                            </div>
+                    <div className="bg-white rounded-lg border border-slate-200 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-slate-600">En cours</span>
+                            <Clock className="h-4 w-4 text-blue-400" />
                         </div>
+                        <p className="text-2xl font-bold text-blue-600">{stats.enCours}</p>
+                        <p className="text-xs text-slate-500 mt-1">tâches démarrées</p>
                     </div>
-
                     {/* Terminées */}
-                    <div className="bg-white border border-slate-200 rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                            <CheckCircle className="h-5 w-5 text-green-500" />
-                            <div>
-                                <p className="text-3xl font-bold text-slate-900">{stats.terminees}</p>
-                                <p className="text-sm text-slate-500">Terminées</p>
-                            </div>
+                    <div className="bg-white rounded-lg border border-slate-200 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-slate-600">Terminées</span>
+                            <CheckCircle className="h-4 w-4 text-green-400" />
                         </div>
+                        <p className="text-2xl font-bold text-green-600">{stats.terminees}</p>
+                        <p className="text-xs text-slate-500 mt-1">tâches clôturées</p>
                     </div>
-
                     {/* Urgentes */}
-                    <div className="bg-white border border-slate-200 rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                            <AlertCircle className="h-5 w-5 text-red-500" />
-                            <div>
-                                <p className="text-3xl font-bold text-slate-900">{stats.urgentes}</p>
-                                <p className="text-sm text-slate-500">Urgentes</p>
-                            </div>
+                    <div className="bg-white rounded-lg border border-slate-200 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-slate-600">Urgentes</span>
+                            <AlertCircle className="h-4 w-4 text-red-400" />
                         </div>
+                        <p className="text-2xl font-bold text-red-600">{stats.urgentes}</p>
+                        <p className="text-xs text-slate-500 mt-1">priorité urgente</p>
                     </div>
                 </div>
 
@@ -179,23 +246,22 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                     </Button>
                 </div>
 
-                {/* Tâches List */}
-                <div className="space-y-4">
-                    {filteredTasks.length === 0 ? (
+                {/* Active Tasks */}
+                <div className="space-y-4 mb-8">
+                    {activeTasks.length === 0 ? (
                         <div className="text-center py-10 text-slate-500 bg-white rounded-lg border border-slate-200">
-                            Aucune tâche assignée pour le moment.
+                            {isRapportView ? "Aucun rapport trouvé." : "Aucune tâche active pour le moment."}
                         </div>
                     ) : (
-                        filteredTasks.filter(t => t.status !== "TERMINEE").map((tache) => {
+                        activeTasks.map((tache) => {
                             const priorityConfig = getPriorityConfig(tache.priorite)
-
                             return (
                                 <div
                                     key={tache.id}
                                     className={`bg-white rounded-lg border border-slate-200 border-l-4 ${priorityConfig.border} p-4`}
                                 >
                                     <div className="flex items-start justify-between">
-                                        <div>
+                                        <div className="flex-1">
                                             {/* Badges */}
                                             <div className="flex items-center gap-2 mb-2">
                                                 <Badge variant="secondary" className={`${priorityConfig.color} border-0 font-medium text-xs`}>
@@ -204,6 +270,16 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                                                 <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-normal text-xs">
                                                     {tache.type}
                                                 </Badge>
+                                                {tache.rapportStatut === "REDIGE" && tache.rapport && (
+                                                    <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border border-yellow-200 font-normal text-xs">
+                                                        <Pencil className="h-3 w-3 mr-1" />Brouillon
+                                                    </Badge>
+                                                )}
+                                                {tache.rapportStatut === "ENVOYE" && (
+                                                    <Badge variant="secondary" className="bg-green-50 text-green-700 border border-green-200 font-normal text-xs">
+                                                        <Send className="h-3 w-3 mr-1" />Rapport envoyé
+                                                    </Badge>
+                                                )}
                                             </div>
 
                                             {/* Title */}
@@ -228,7 +304,7 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                                             {tache.status === "A_FAIRE" && (
                                                 <Button
                                                     variant="outline"
@@ -245,6 +321,16 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                                                     En cours
                                                 </Badge>
                                             )}
+                                            {/* Rapport button */}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                                onClick={() => handleOpenRapport(tache)}
+                                            >
+                                                <FileText className="h-3 w-3 mr-1" />
+                                                {tache.rapport ? "Modifier rapport" : "Rédiger rapport"}
+                                            </Button>
                                             {tache.status !== "TERMINEE" && (
                                                 <Button
                                                     size="sm"
@@ -262,7 +348,131 @@ export function TachesClient({ initialTasks = [] }: TachesClientProps) {
                         })
                     )}
                 </div>
+
+                {/* Completed Tasks */}
+                {doneTasks.length > 0 && (
+                    <div>
+                        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Tâches terminées</h2>
+                        <div className="space-y-3">
+                            {doneTasks.map((tache) => (
+                                <div key={tache.id} className="bg-white rounded-lg border border-slate-200 border-l-4 border-l-green-400 p-4 opacity-75">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="font-medium text-slate-600 line-through">{tache.titre}</h3>
+                                            <p className="text-xs text-slate-400">{tache.entreprise}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {tache.rapportStatut === "ENVOYE" || tache.rapportStatut === "LU" ? (
+                                                <Badge className="bg-green-100 text-green-700 border-0 text-xs">
+                                                    <Send className="h-3 w-3 mr-1" />Rapport envoyé
+                                                </Badge>
+                                            ) : (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs"
+                                                    onClick={() => handleOpenRapport(tache)}
+                                                >
+                                                    <FileText className="h-3 w-3 mr-1" />
+                                                    {tache.rapport ? "Voir rapport" : "Rédiger rapport"}
+                                                </Button>
+                                            )}
+                                            <CheckCircle className="h-4 w-4 text-green-500" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* Rapport Modal */}
+            <Dialog open={rapportModal.open} onOpenChange={(open) => !open && setRapportModal({ open: false, tache: null })}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-indigo-600" />
+                            Rapport de tâche
+                        </DialogTitle>
+                        <DialogDescription>
+                            {rapportModal.tache?.titre} — {rapportModal.tache?.entreprise}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        {/* Context info */}
+                        <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-600 border border-slate-200">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="font-medium">Type :</span> {rapportModal.tache?.type}
+                                </div>
+                                <div>
+                                    <span className="font-medium">Priorité :</span> {rapportModal.tache?.priorite}
+                                </div>
+                                <div>
+                                    <span className="font-medium">Statut :</span> {getStatusLabel(rapportModal.tache?.status || "")}
+                                </div>
+                                <div>
+                                    <span className="font-medium">Entreprise :</span> {rapportModal.tache?.entreprise}
+                                </div>
+                            </div>
+                            {rapportModal.tache?.description && (
+                                <div className="mt-2 pt-2 border-t border-slate-200">
+                                    <span className="font-medium">Description :</span> {rapportModal.tache.description}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Rapport textarea */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                                Contenu du rapport
+                                <span className="text-slate-400 font-normal ml-1">— décrivez les actions réalisées, observations, conclusions</span>
+                            </label>
+                            <Textarea
+                                value={rapportText}
+                                onChange={(e) => setRapportText(e.target.value)}
+                                placeholder="Décrivez les actions effectuées, les constats observés sur le terrain, les recommandations éventuelles..."
+                                className="min-h-[200px] resize-y border-slate-300 focus:border-indigo-400 focus:ring-indigo-400"
+                                disabled={rapportModal.tache?.rapportStatut === "ENVOYE" || rapportModal.tache?.rapportStatut === "LU"}
+                            />
+                            <p className="text-xs text-slate-400 mt-1">{rapportText.length} caractères</p>
+                        </div>
+
+                        {/* Status indicator */}
+                        {(rapportModal.tache?.rapportStatut === "ENVOYE" || rapportModal.tache?.rapportStatut === "LU") && (
+                            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                                <Send className="h-4 w-4" />
+                                Rapport déjà envoyé à l&apos;administrateur. Vous ne pouvez plus le modifier.
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer actions */}
+                    {rapportModal.tache?.rapportStatut !== "ENVOYE" && rapportModal.tache?.rapportStatut !== "LU" && (
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <Button
+                                variant="outline"
+                                onClick={handleSaveDraft}
+                                disabled={isSavingRapport || !rapportText.trim()}
+                                className="border-slate-300"
+                            >
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Enregistrer brouillon
+                            </Button>
+                            <Button
+                                onClick={handleEnvoyer}
+                                disabled={isSavingRapport || !rapportText.trim()}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            >
+                                <Send className="h-4 w-4 mr-2" />
+                                {isSavingRapport ? "Envoi..." : "Envoyer à l'admin"}
+                            </Button>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

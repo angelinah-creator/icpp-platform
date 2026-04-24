@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Bell, ArrowLeft, ArrowRight, Check, Building2, FileText, AlertTriangle, ClipboardCheck, Loader2 } from "lucide-react"
+import { Search, Bell, ArrowLeft, ArrowRight, Check, Building2, FileText, AlertTriangle, ClipboardCheck, Loader2, CreditCard, MinusCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -17,8 +17,9 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { updateAudit } from "@/server/actions/client"
+import { NIVEAUX_MAITRISE, NIVEAUX_MAITRISE_LABELS, calcIndicateurs } from "@/lib/duerp-calcul"
 
-type Step = 1 | 2 | 3 | 4
+type Step = 1 | 2 | 3 | 4 | 5
 
 interface DocumentItem {
     id: string
@@ -39,6 +40,7 @@ interface RiskItem {
     checked: boolean
     gravite?: number
     frequence?: number
+    niveauMaitrise?: string
 }
 
 interface AuditData {
@@ -53,21 +55,33 @@ interface AuditData {
         nom: string
         gravite: number | null
         frequence: number | null
+        niveauMaitrise?: string
         priorite: number | null
+        risqueResiduel?: number | null
+        prioriteAction?: string | null
         identifie: boolean
     }>
+    proposedPlanCode?: string | null
+}
+
+interface Plan {
+    code: string
+    nom: string
+    prix: number
 }
 
 interface EditAuditClientProps {
     audit: AuditData
+    plans?: Plan[]
 }
 
-export function EditAuditClient({ audit }: EditAuditClientProps) {
+export function EditAuditClient({ audit, plans = [] }: EditAuditClientProps) {
     const router = useRouter()
     const [currentStep, setCurrentStep] = useState<Step>(1)
     const [commentaire, setCommentaire] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [proposedPlanCode, setProposedPlanCode] = useState<string>(audit.proposedPlanCode || "")
 
     // Documents d'audit de base
     const baseDocuments = [
@@ -159,7 +173,8 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
                     ...risk,
                     checked: auditRisk?.identifie || false,
                     gravite: auditRisk?.gravite || 2,
-                    frequence: auditRisk?.frequence || 2
+                    frequence: auditRisk?.frequence || 2,
+                    niveauMaitrise: auditRisk?.niveauMaitrise || "Aucune",
                 }
             })
         }))
@@ -170,6 +185,7 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
         { id: 2, label: "Documents", icon: FileText, completed: currentStep > 2 },
         { id: 3, label: "Risques", icon: AlertTriangle, completed: currentStep > 3 },
         { id: 4, label: "Synthèse", icon: ClipboardCheck, completed: currentStep > 4 },
+        { id: 5, label: "Offre", icon: CreditCard, completed: false },
     ]
 
     const handleDocumentToggle = (id: string) => {
@@ -207,12 +223,12 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
     }
 
     const handleRiskGravite = (categoryId: string, riskId: string, gravite: number) => {
-        setRiskCategories(cats =>
-            cats.map(cat =>
+        setRiskCategories((cats: RiskCategory[]) =>
+            cats.map((cat: RiskCategory) =>
                 cat.id === categoryId
                     ? {
                         ...cat,
-                        risks: cat.risks.map(risk =>
+                        risks: cat.risks.map((risk: RiskItem) =>
                             risk.id === riskId ? { ...risk, gravite } : risk
                         )
                     }
@@ -222,13 +238,28 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
     }
 
     const handleRiskFrequence = (categoryId: string, riskId: string, frequence: number) => {
-        setRiskCategories(cats =>
-            cats.map(cat =>
+        setRiskCategories((cats: RiskCategory[]) =>
+            cats.map((cat: RiskCategory) =>
                 cat.id === categoryId
                     ? {
                         ...cat,
-                        risks: cat.risks.map(risk =>
+                        risks: cat.risks.map((risk: RiskItem) =>
                             risk.id === riskId ? { ...risk, frequence } : risk
+                        )
+                    }
+                    : cat
+            )
+        )
+    }
+
+    const handleRiskMaitrise = (categoryId: string, riskId: string, niveauMaitrise: string) => {
+        setRiskCategories((cats: RiskCategory[]) =>
+            cats.map((cat: RiskCategory) =>
+                cat.id === categoryId
+                    ? {
+                        ...cat,
+                        risks: cat.risks.map((risk: RiskItem) =>
+                            risk.id === riskId ? { ...risk, niveauMaitrise } : risk
                         )
                     }
                     : cat
@@ -244,7 +275,7 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
             console.log("🚀 Début de la mise à jour de l'audit")
 
             // Préparer les données documents
-            const documentsData = documents.map(doc => ({
+            const documentsData = documents.map((doc: DocumentItem) => ({
                 type: doc.id,
                 present: doc.checked,
                 conforme: doc.conforme
@@ -252,14 +283,15 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
             console.log("📄 Documents:", documentsData)
 
             // Préparer les données risques
-            const risksData = riskCategories.flatMap(cat =>
+            const risksData = riskCategories.flatMap((cat: RiskCategory) =>
                 cat.risks
-                    .filter(risk => risk.checked)
-                    .map(risk => ({
+                    .filter((risk: RiskItem) => risk.checked)
+                    .map((risk: RiskItem) => ({
                         categorie: cat.id.toUpperCase(),
                         nom: risk.label,
                         gravite: risk.gravite || 2,
                         frequence: risk.frequence || 2,
+                        niveauMaitrise: risk.niveauMaitrise || "Aucune",
                         priorite: (risk.gravite || 2) * (risk.frequence || 2)
                     }))
             )
@@ -271,7 +303,8 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
                 audit.id,
                 audit.companyId,
                 documentsData,
-                risksData
+                risksData,
+                proposedPlanCode || undefined
             )
 
             console.log("✅ Résultat:", result)
@@ -293,12 +326,12 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
         }
     }
 
-    const documentsChecked = documents.filter(d => d.checked).length
+    const documentsChecked = documents.filter((d: DocumentItem) => d.checked).length
     const totalDocuments = documents.length
     const documentScore = Math.round((documentsChecked / totalDocuments) * 100)
 
     const allRisks = riskCategories.flatMap(cat => cat.risks)
-    const checkedRisks = allRisks.filter(r => r.checked)
+    const checkedRisks = allRisks.filter((r: RiskItem) => r.checked)
     const totalRisks = checkedRisks.length
 
     return (
@@ -397,7 +430,7 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
                     <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
                         <h2 className="text-xl font-bold text-slate-900 mb-6">Vérification des documents</h2>
                         <div className="space-y-4">
-                            {documents.map(doc => (
+                            {documents.map((doc: DocumentItem) => (
                                 <div key={doc.id} className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors">
                                     <div className="flex items-start gap-4">
                                         <Checkbox
@@ -456,41 +489,77 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
                                                             {risk.label}
                                                         </Label>
                                                         {risk.checked && (
-                                                            <div className="grid grid-cols-2 gap-4 mt-3">
-                                                                <div>
-                                                                    <Label className="text-sm text-slate-600 mb-2 block">Gravité</Label>
-                                                                    <RadioGroup
-                                                                        value={risk.gravite?.toString()}
-                                                                        onValueChange={(value) => handleRiskGravite(category.id, risk.id, parseInt(value))}
-                                                                        className="flex gap-2"
-                                                                    >
-                                                                        {[1, 2, 3, 4].map(val => (
-                                                                            <div key={val} className="flex items-center">
-                                                                                <RadioGroupItem value={val.toString()} id={`${risk.id}-g${val}`} />
-                                                                                <Label htmlFor={`${risk.id}-g${val}`} className="ml-1 text-sm cursor-pointer">
-                                                                                    {val}
-                                                                                </Label>
-                                                                            </div>
-                                                                        ))}
-                                                                    </RadioGroup>
+                                                            <div className="space-y-4 mt-3">
+                                                                <div className="grid grid-cols-2 gap-4">
+                                                                    <div>
+                                                                        <Label className="text-sm text-slate-600 mb-2 block">Gravité</Label>
+                                                                        <RadioGroup
+                                                                            value={risk.gravite?.toString()}
+                                                                            onValueChange={(value) => handleRiskGravite(category.id, risk.id, parseInt(value))}
+                                                                            className="flex gap-2"
+                                                                        >
+                                                                            {[1, 2, 3, 4].map(val => (
+                                                                                <div key={val} className="flex items-center">
+                                                                                    <RadioGroupItem value={val.toString()} id={`${risk.id}-g${val}`} />
+                                                                                    <Label htmlFor={`${risk.id}-g${val}`} className="ml-1 text-sm cursor-pointer">
+                                                                                        {val}
+                                                                                    </Label>
+                                                                                </div>
+                                                                            ))}
+                                                                        </RadioGroup>
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label className="text-sm text-slate-600 mb-2 block">Fréquence</Label>
+                                                                        <RadioGroup
+                                                                            value={risk.frequence?.toString()}
+                                                                            onValueChange={(value) => handleRiskFrequence(category.id, risk.id, parseInt(value))}
+                                                                            className="flex gap-2"
+                                                                        >
+                                                                            {[1, 2, 3, 4].map(val => (
+                                                                                <div key={val} className="flex items-center">
+                                                                                    <RadioGroupItem value={val.toString()} id={`${risk.id}-f${val}`} />
+                                                                                    <Label htmlFor={`${risk.id}-f${val}`} className="ml-1 text-sm cursor-pointer">
+                                                                                        {val}
+                                                                                    </Label>
+                                                                                </div>
+                                                                            ))}
+                                                                        </RadioGroup>
+                                                                    </div>
                                                                 </div>
+                                                                {/* Niveau de maîtrise */}
                                                                 <div>
-                                                                    <Label className="text-sm text-slate-600 mb-2 block">Fréquence</Label>
-                                                                    <RadioGroup
-                                                                        value={risk.frequence?.toString()}
-                                                                        onValueChange={(value) => handleRiskFrequence(category.id, risk.id, parseInt(value))}
-                                                                        className="flex gap-2"
+                                                                    <Label className="text-sm text-slate-600 mb-2 block">Niveau de maîtrise</Label>
+                                                                    <Select
+                                                                        value={risk.niveauMaitrise || "Aucune"}
+                                                                        onValueChange={(value) => handleRiskMaitrise(category.id, risk.id, value)}
                                                                     >
-                                                                        {[1, 2, 3, 4].map(val => (
-                                                                            <div key={val} className="flex items-center">
-                                                                                <RadioGroupItem value={val.toString()} id={`${risk.id}-f${val}`} />
-                                                                                <Label htmlFor={`${risk.id}-f${val}`} className="ml-1 text-sm cursor-pointer">
-                                                                                    {val}
-                                                                                </Label>
-                                                                            </div>
-                                                                        ))}
-                                                                    </RadioGroup>
+                                                                        <SelectTrigger className="w-full">
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {NIVEAUX_MAITRISE.map(nm => (
+                                                                                <SelectItem key={nm} value={nm}>
+                                                                                    {NIVEAUX_MAITRISE_LABELS[nm]}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
                                                                 </div>
+                                                                {/* Preview calcul */}
+                                                                {(() => {
+                                                                    const f = risk.frequence || 2
+                                                                    const g = risk.gravite || 2
+                                                                    const nm = risk.niveauMaitrise || "Aucune"
+                                                                    const { risqueBrut, risqueResiduel, prioriteAction } = calcIndicateurs(f, g, nm)
+                                                                    const color = prioriteAction === "Critique" ? "text-red-600" : prioriteAction === "Élevé" ? "text-amber-600" : prioriteAction === "Modéré" ? "text-orange-600" : "text-green-600"
+                                                                    return (
+                                                                        <div className="text-xs bg-slate-50 rounded p-2 flex gap-4">
+                                                                            <span className="text-slate-500">Brut: <strong>{risqueBrut}</strong></span>
+                                                                            <span className="text-slate-500">Résiduel: <strong>{risqueResiduel}</strong></span>
+                                                                            <span className={`font-semibold ${color}`}>{prioriteAction}</span>
+                                                                        </div>
+                                                                    )
+                                                                })()}
                                                             </div>
                                                         )}
                                                     </div>
@@ -547,17 +616,17 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
                                         <h4 className="text-sm font-semibold text-slate-700 mb-2">{category.title}</h4>
                                         <div className="space-y-2">
                                             {categoryRisks.map(risk => {
-                                                const priorite = (risk.gravite || 2) * (risk.frequence || 2)
-                                                const prioriteLabel = priorite >= 12 ? "Critique" : priorite >= 6 ? "Élevé" : "Modéré"
-                                                const prioriteColor = priorite >= 12 ? "text-red-600" : priorite >= 6 ? "text-orange-600" : "text-yellow-600"
+                                                const f = risk.frequence || 2
+                                                const g = risk.gravite || 2
+                                                const nm = risk.niveauMaitrise || "Aucune"
+                                                const { risqueBrut, risqueResiduel, prioriteAction } = calcIndicateurs(f, g, nm)
+                                                const prioriteColor = prioriteAction === "Critique" ? "text-red-600" : prioriteAction === "Élevé" ? "text-orange-600" : prioriteAction === "Modéré" ? "text-yellow-600" : "text-green-600"
                                                 return (
                                                     <div key={risk.id} className="flex items-center justify-between text-sm">
                                                         <span className="text-slate-700">{risk.label}</span>
                                                         <div className="flex items-center gap-2 text-xs">
-                                                            <span className="text-slate-500">G:{risk.gravite} F:{risk.frequence}</span>
-                                                            <span className={`font-medium ${prioriteColor}`}>
-                                                                {prioriteLabel}
-                                                            </span>
+                                                            <span className="text-slate-400">G:{g} F:{f} → Brut:{risqueBrut} → Rés:{risqueResiduel}</span>
+                                                            <span className={`font-medium ${prioriteColor}`}>{prioriteAction}</span>
                                                         </div>
                                                     </div>
                                                 )
@@ -588,6 +657,67 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
                     </div>
                 )}
 
+                {/* Step 5: Offre */}
+                {currentStep === 5 && (
+                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+                        <div className="mb-6">
+                            <h2 className="text-xl font-bold text-slate-900 mb-1">Proposition d'abonnement</h2>
+                            <p className="text-sm text-slate-500">Suggérez un plan adapté aux besoins identifiés lors de l'audit</p>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {plans.map((plan) => (
+                                <div
+                                    key={plan.code}
+                                    onClick={() => setProposedPlanCode(plan.code)}
+                                    className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer ${proposedPlanCode === plan.code
+                                        ? "border-blue-600 bg-blue-50 shadow-md ring-2 ring-blue-600 ring-opacity-10"
+                                        : "border-slate-100 hover:border-blue-200 bg-white"
+                                        }`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-lg ${proposedPlanCode === plan.code ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                                                <CreditCard className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-slate-900">{plan.nom}</h3>
+                                                <p className="text-sm text-slate-500">Plan suggéré</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xl font-bold text-slate-900">{plan.prix}€ <span className="text-xs font-normal text-slate-500">/mois</span></p>
+                                        </div>
+                                    </div>
+                                    {proposedPlanCode === plan.code && (
+                                        <div className="absolute top-2 right-2">
+                                            <Check className="h-4 w-4 text-blue-600" />
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+
+                            <div
+                                onClick={() => setProposedPlanCode("")}
+                                className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${proposedPlanCode === ""
+                                    ? "border-slate-600 bg-slate-50 shadow-md"
+                                    : "border-slate-100 hover:border-slate-200 bg-white"
+                                    }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-lg ${proposedPlanCode === "" ? "bg-slate-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                                        <MinusCircle className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-slate-900">Ne rien proposer</h3>
+                                        <p className="text-sm text-slate-500">Finaliser sans offre</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Navigation */}
                 <div className="mt-8 flex items-center justify-between">
                     <Button
@@ -598,9 +728,9 @@ export function EditAuditClient({ audit }: EditAuditClientProps) {
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Précédent
                     </Button>
-                    {currentStep < 4 ? (
+                    {currentStep < 5 ? (
                         <Button
-                            onClick={() => setCurrentStep((prev) => Math.min(4, prev + 1) as Step)}
+                            onClick={() => setCurrentStep((prev) => Math.min(5, prev + 1) as Step)}
                             disabled={isSubmitting}
                         >
                             Suivant

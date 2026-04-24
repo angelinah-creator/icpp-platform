@@ -64,7 +64,7 @@ export function ClientSignalementsPage({ signalements }: ClientSignalementsPageP
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header */}
             <div className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between">
                 <div>
@@ -115,21 +115,23 @@ export function ClientSignalementsPage({ signalements }: ClientSignalementsPageP
                                                     <h3 className="font-semibold text-slate-900">{signalement.titre}</h3>
                                                     <span className="text-xs text-slate-400">({getTypeLabel(signalement.type)})</span>
                                                 </div>
-                                                <p className="text-sm text-slate-500 mb-1">{signalement.description}</p>
+                                                <p className="text-sm text-slate-500 mb-1 line-clamp-2 sm:line-clamp-none">{signalement.description}</p>
                                                 <p className="text-xs text-slate-400">
                                                     Déclaré le {new Date(signalement.createdAt).toLocaleDateString("fr-FR")}
                                                 </p>
                                             </div>
                                         </div>
-                                        <Badge
-                                            className={
-                                                signalement.status === "TRAITE"
-                                                    ? "bg-green-100 text-green-700 hover:bg-green-100"
-                                                    : "bg-orange-100 text-orange-700 hover:bg-orange-100"
-                                            }
-                                        >
-                                            {signalement.status === "TRAITE" ? "Traité" : "En cours"}
-                                        </Badge>
+                                        <div className="flex items-center justify-between sm:justify-end border-t sm:border-0 border-slate-50 pt-3 sm:pt-0">
+                                            <Badge
+                                                className={
+                                                    signalement.status === "TRAITE"
+                                                        ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                                        : "bg-orange-100 text-orange-700 hover:bg-orange-100"
+                                                }
+                                            >
+                                                {signalement.status === "TRAITE" ? "Traité" : "En cours"}
+                                            </Badge>
+                                        </div>
                                     </div>
                                 )
                             })}

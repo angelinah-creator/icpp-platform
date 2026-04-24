@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Search, Plus, MoreHorizontal, Bell, FileText, CheckCircle2, Check, Building2, Filter, Eye, Pencil, XCircle, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +19,9 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { PlanifierAuditModal } from "@/components/admin/planifier-audit-modal"
 import { updateAuditStatus, deleteAdminAudit } from "@/server/actions/admin"
+import { requestClientPaymentAfterAudit } from "@/server/actions/contracts"
+import { AdminHeader } from "@/components/admin/admin-header"
+
 
 interface Audit {
     id: string
@@ -122,6 +126,20 @@ export function AuditsClient({ initialAudits, stats, companies, auditors }: Audi
         }
     }
 
+    async function handleRequestPayment(auditId: string) {
+        setLoading(true)
+        try {
+            const result = await requestClientPaymentAfterAudit(auditId)
+            if (result.error) {
+                showToast(result.error)
+                return
+            }
+            showToast("Notification de paiement envoyee au client")
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const filteredAudits = initialAudits.filter(a =>
         a.entreprise.toLowerCase().includes(searchQuery.toLowerCase()) ||
         a.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -130,24 +148,14 @@ export function AuditsClient({ initialAudits, stats, companies, auditors }: Audi
 
     return (
         <div className="space-y-6 relative">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Gestion des audits</h1>
-                    <p className="text-sm text-slate-500 mt-1">Planifiez et suivez les audits de conformité</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="Rechercher ..." className="pl-10 w-48 bg-white" />
-                    </div>
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-5 w-5 text-slate-600" />
-                    </Button>
-                </div>
-            </div>
+            <AdminHeader
+                title="Gestion des audits"
+                subtitle="Planifiez et suivez les audits de conformité"
+            />
+
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="border shadow-sm">
                     <CardContent className="p-4 flex items-center gap-3">
                         <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -195,7 +203,7 @@ export function AuditsClient({ initialAudits, stats, companies, auditors }: Audi
             </div>
 
             {/* Search Bar and Actions */}
-            <div className="flex items-center justify-between gap-4 bg-slate-50/50 p-1 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 p-1 rounded-lg">
                 <div className="relative flex-1 max-w-2xl">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
@@ -210,18 +218,17 @@ export function AuditsClient({ initialAudits, stats, companies, auditors }: Audi
                         <Filter className="h-4 w-4" />
                         Tous les statuts
                     </Button>
-                    <Button
-                        className="bg-[#2563EB] hover:bg-[#1d4ed8]"
-                        onClick={() => setIsModalOpen(true)}
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Planifier un audit
-                    </Button>
+                    <Link href="/admin/audits/nouveau">
+                        <Button className="bg-[#2563EB] hover:bg-[#1d4ed8]">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Réaliser un audit
+                        </Button>
+                    </Link>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+            <div className="bg-white rounded-lg border shadow-sm overflow-hidden overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-b">
@@ -288,6 +295,23 @@ export function AuditsClient({ initialAudits, stats, companies, auditors }: Audi
                                                     >
                                                         <XCircle className="h-4 w-4 mr-2" />
                                                         Annuler l'audit
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {audit.statut === "Terminée" && (
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleRequestPayment(audit.id)}
+                                                        className="cursor-pointer"
+                                                    >
+                                                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                                                        Procéder au paiement
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {audit.statut === "Terminée" && (
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/admin/audits/${audit.id}/finalisation`} className="cursor-pointer">
+                                                            <Eye className="h-4 w-4 mr-2" />
+                                                            Finaliser sur place
+                                                        </Link>
                                                     </DropdownMenuItem>
                                                 )}
                                                 <DropdownMenuSeparator />

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Plus, MoreHorizontal, Eye, Edit, Building2, Check, Mail, Phone, MapPin, Save, X } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Eye, Edit, Building2, Check, Mail, Phone, MapPin, Save, X, MessageSquare } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -36,6 +36,8 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { createCompanyAsAuditeur } from "@/server/actions/client"
+import { NotificationBell } from "@/components/notifications/notification-bell"
+
 
 interface Client {
     id: string
@@ -153,12 +155,11 @@ export function EntreprisesClient({ initialClients, metiers }: EntreprisesClient
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                             <Input placeholder="Rechercher ..." className="pl-10 w-[300px] bg-slate-50 border-slate-200" />
                         </div>
-                        <Button variant="ghost" size="icon" className="relative">
-                            <div className="flex items-center justify-center">
-                                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">3</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-bell text-slate-600"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-                            </div>
-                        </Button>
+                        {/* Notifications */}
+                        <div className="relative">
+                            <NotificationBell />
+                        </div>
+
                     </div>
                 </div>
             </header>
@@ -236,6 +237,12 @@ export function EntreprisesClient({ initialClients, metiers }: EntreprisesClient
                                                         <DropdownMenuItem asChild className="cursor-pointer">
                                                             <Link href={`/auditeur/entreprises/${client.id}`}>
                                                                 Voir la fiche
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem asChild className="cursor-pointer text-amber-600 focus:text-amber-600">
+                                                            <Link href={`/auditeur/entreprises/${client.id}#notes-internes`} className="flex items-center gap-2">
+                                                                <MessageSquare className="h-4 w-4" />
+                                                                Notes internes
                                                             </Link>
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem asChild className="cursor-pointer">

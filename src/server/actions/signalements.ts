@@ -76,6 +76,38 @@ export async function createSignalement(input: CreateSignalementInput) {
         })
 
         revalidatePath("/dashboard/signalements")
+        revalidatePath("/auditeur/signalements")
+
+        // Notifier tous les auditeurs d'un nouveau signalement
+        const auditeurs = await prisma.user.findMany({
+            where: { role: { in: ["AUDITOR", "COMMERCIAL"] } },
+            select: { id: true }
+        })
+        await Promise.all(auditeurs.map(a =>
+            prisma.notification.create({
+                data: {
+                    userId: a.id,
+                    type: "NOUVEAU_SIGNALEMENT",
+                    title: "Nouveau signalement",
+                    message: `${user.company?.name || "Une entreprise"} a déclaré : ${input.title}`,
+                    actionUrl: "/auditeur/signalements",
+                }
+            })
+        ))
+
+        // Notifier l'admin (userId: null = notification admin globale)
+        await prisma.notification.create({
+            data: {
+                userId: null,
+                type: "SIGNALEMENT_RECU",
+                title: "Nouveau signalement client",
+                message: `${user.company?.name || "Une entreprise"} a déclaré : ${input.title}`,
+                actionUrl: "/admin/signalements",
+            }
+        })
+
+        revalidatePath("/admin/signalements")
+        revalidatePath("/admin")
 
         return { success: true, data: signalement }
     } catch (error) {

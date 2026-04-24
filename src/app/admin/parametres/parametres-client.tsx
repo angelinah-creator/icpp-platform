@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Save, Bell, Check } from "lucide-react"
+import { Search, Save, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { updateSettings } from "@/server/actions/admin"
+import { AdminHeader } from "@/components/admin/admin-header"
+
 
 interface Settings {
     id: string
@@ -45,22 +47,11 @@ export function ParametresClient({ initialSettings }: ParametresClientProps) {
 
     return (
         <div className="space-y-6 relative">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Paramètres</h1>
-                    <p className="text-sm text-slate-500 mt-1">Configuration de la plateforme ICPP</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="Rechercher ..." className="pl-10 w-48 bg-white" />
-                    </div>
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-5 w-5 text-slate-600" />
-                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">1</span>
-                    </Button>
-                </div>
-            </div>
+            <AdminHeader
+                title="Paramètres"
+                subtitle="Configuration de la plateforme ICPP"
+            />
+
 
             <Tabs defaultValue="general" className="w-full">
                 <TabsList className="bg-white border p-1">

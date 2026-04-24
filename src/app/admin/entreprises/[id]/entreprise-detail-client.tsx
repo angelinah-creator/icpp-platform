@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { deleteCompany } from "@/server/actions/admin"
 import { EditCompanyModal } from "@/components/admin/edit-company-modal"
+import { InternalNotesPanel, type InternalNote } from "@/components/admin/internal-notes-panel"
 
 interface Plan {
     code: string
@@ -32,9 +33,12 @@ interface EntrepriseDetailClientProps {
     company: any
     plans: Plan[]
     metiers: Metier[]
+    notes: InternalNote[]
+    currentUserId: string
+    currentUserRole: string
 }
 
-export function EntrepriseDetailClient({ company, plans, metiers }: EntrepriseDetailClientProps) {
+export function EntrepriseDetailClient({ company, plans, metiers, notes, currentUserId, currentUserRole }: EntrepriseDetailClientProps) {
     const router = useRouter()
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
@@ -115,7 +119,7 @@ export function EntrepriseDetailClient({ company, plans, metiers }: EntrepriseDe
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Informations générales */}
                 <Card className="col-span-2">
                     <CardHeader>
@@ -297,6 +301,14 @@ export function EntrepriseDetailClient({ company, plans, metiers }: EntrepriseDe
                 plans={plans}
                 metiers={metiers}
                 onSuccess={handleEditSuccess}
+            />
+
+            {/* Notes Internes */}
+            <InternalNotesPanel
+                companyId={company.id}
+                initialNotes={notes}
+                currentUserId={currentUserId}
+                currentUserRole={currentUserRole}
             />
 
             {/* Delete Confirmation Dialog */}

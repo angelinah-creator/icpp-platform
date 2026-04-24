@@ -40,6 +40,7 @@ import {
 import { AddAuditeurModal } from "@/components/admin/add-auditeur-modal"
 import { EditAuditeurModal } from "@/components/admin/edit-auditeur-modal"
 import { deleteAuditor, toggleAuditorStatus } from "@/server/actions/admin"
+import { AdminHeader } from "@/components/admin/admin-header"
 
 interface Auditor {
     id: string
@@ -172,15 +173,10 @@ export function AuditeursClient({ initialAuditors }: AuditeursClientProps) {
 
     return (
         <div className="space-y-6 relative">
-            {/* Page Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Gestion des auditeurs ICPP</h1>
-                    <p className="text-slate-500 mt-1">
-                        {initialAuditors.length} auditeurs enregistrés
-                    </p>
-                </div>
-            </div>
+            <AdminHeader
+                title="Gestion des auditeurs ICPP"
+                subtitle={`${initialAuditors.length} auditeur${initialAuditors.length > 1 ? "s" : ""} enregistré${initialAuditors.length > 1 ? "s" : ""}`}
+            />
 
             {/* Search and Filters */}
             <div className="flex items-center justify-between bg-white/50 p-1 rounded-lg">

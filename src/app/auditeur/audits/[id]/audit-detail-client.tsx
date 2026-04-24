@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import Link from "next/link"
-import { ArrowLeft, Building2, Calendar, User, FileText, AlertTriangle, Download, Mail, Phone, MapPin, CheckCircle2, XCircle } from "lucide-react"
+import { ArrowLeft, Building2, Calendar, User, FileText, AlertTriangle, Download, Mail, Phone, MapPin, CheckCircle2, XCircle, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { requestClientPaymentAfterAudit } from "@/server/actions/contracts"
 
 interface AuditDetailProps {
     audit: {
@@ -16,6 +17,7 @@ interface AuditDetailProps {
         commentaire: string | null
         createdAt: Date
         updatedAt: Date
+        proposedPlanCode: string | null
         company: {
             id: string
             name: string
@@ -87,6 +89,8 @@ function getPriorityLabel(priorite: number | null): string {
 
 export function AuditDetailClient({ audit }: AuditDetailProps) {
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+    const [paymentMessage, setPaymentMessage] = useState<string | null>(null)
+    const [isPending, startTransition] = useTransition()
 
     const formattedDate = new Date(audit.createdAt).toLocaleDateString('fr-FR', {
         day: 'numeric',
@@ -121,6 +125,18 @@ export function AuditDetailClient({ audit }: AuditDetailProps) {
         }
     }
 
+    function handleRequestPayment() {
+        setPaymentMessage(null)
+        startTransition(async () => {
+            const result = await requestClientPaymentAfterAudit(audit.id)
+            if (result.error) {
+                setPaymentMessage(result.error)
+                return
+            }
+            setPaymentMessage("Notification envoyee au client pour proceder au paiement.")
+        })
+    }
+
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Header */}
@@ -141,6 +157,23 @@ export function AuditDetailClient({ audit }: AuditDetailProps) {
                     </div>
                     <div className="flex items-center gap-3">
                         {getStatusBadge(audit.status)}
+                        {audit.status === "TERMINE" && (
+                            <Link href={`/auditeur/audits/${audit.id}/finalisation`}>
+                                <Button variant="outline">
+                                    Finaliser sur place
+                                </Button>
+                            </Link>
+                        )}
+                        {audit.status === "TERMINE" && audit.proposedPlanCode && (
+                            <Button
+                                variant="outline"
+                                onClick={handleRequestPayment}
+                                disabled={isPending}
+                            >
+                                <CreditCard className="h-4 w-4 mr-2" />
+                                Proceder au paiement
+                            </Button>
+                        )}
                         <Button
                             className="bg-[#4A7FFF] hover:bg-[#3968E6]"
                             onClick={handleExportPDF}
@@ -155,7 +188,12 @@ export function AuditDetailClient({ audit }: AuditDetailProps) {
 
             {/* Main Content */}
             <div className="p-8">
-                <div className="grid grid-cols-3 gap-6">
+                {paymentMessage && (
+                    <div className="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                        {paymentMessage}
+                    </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     {/* Left Column - Main Info */}
                     <div className="col-span-2 space-y-6">
                         {/* Score Global */}
@@ -400,6 +438,27 @@ export function AuditDetailClient({ audit }: AuditDetailProps) {
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Plan Proposé */}
+                        {audit.proposedPlanCode && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <CreditCard className="h-5 w-5 text-blue-600" />
+                                        Offre proposée
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                        <div>
+                                            <div className="font-bold text-slate-900">Plan {audit.proposedPlanCode}</div>
+                                            <p className="text-sm text-slate-600">Abonnement suggéré suite à l'audit</p>
+                                        </div>
+                                        <Badge className="bg-blue-600 text-white">PROPOSÉ</Badge>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 </div>
             </div>

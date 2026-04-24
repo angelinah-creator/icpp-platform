@@ -44,8 +44,8 @@ export function DuerpClientDashboard({ companyName, duerps }: Props) {
     const otherDuerps = duerps.filter(d => d.id !== activeDuerp?.id)
 
     return (
-        <div className="min-h-screen bg-slate-50">
-            <div className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between">
+        <div className="min-h-screen bg-slate-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 sm:py-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold text-slate-900">Mes Documents Uniques</h1>
                     <p className="text-slate-500 text-sm mt-0.5">
@@ -57,10 +57,10 @@ export function DuerpClientDashboard({ companyName, duerps }: Props) {
             <div className="p-6">
                 {/* DUERP Actif */}
                 {activeDuerp ? (
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 mb-6">
-                        <div className="flex items-start justify-between">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-100 rounded-xl p-6 mb-6 hover:shadow-md hover:border-blue-200 hover:-translate-y-1 transition-all duration-300 group">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
                             <div className="flex items-start gap-4">
-                                <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                                <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-200 transition-all duration-300">
                                     <FileText className="h-6 w-6 text-blue-600" />
                                 </div>
                                 <div>
@@ -123,49 +123,51 @@ export function DuerpClientDashboard({ companyName, duerps }: Props) {
                             {(otherDuerps.length > 0 ? otherDuerps : duerps).map((duerp) => (
                                 <div
                                     key={duerp.id}
-                                    className="bg-white rounded-xl border border-slate-200 p-5 flex items-center justify-between"
+                                    className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 transition-all duration-300 group"
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                                    <div className="flex items-start sm:items-center gap-4 min-w-0">
+                                        <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:bg-slate-200 transition-all duration-300">
                                             <FileText className="h-5 w-5 text-slate-500" />
                                         </div>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-slate-900">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                <h3 className="font-semibold text-slate-900 line-clamp-1">
                                                     DUERP v{duerp.version}.0
                                                 </h3>
                                                 {getStatusBadge(duerp.status, duerp.signedAt)}
                                             </div>
-                                            <p className="text-sm text-slate-500">
+                                            <p className="text-sm text-slate-500 line-clamp-1">
                                                 Créé le {format(new Date(duerp.createdAt), "dd/MM/yyyy", { locale: fr })} — {duerp.risqueCount} risque{duerp.risqueCount > 1 ? "s" : ""}
                                             </p>
                                         </div>
                                     </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                                                <MoreHorizontal className="h-5 w-5 text-slate-500" />
-                                            </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem asChild>
-                                                <Link href={`/dashboard/duerp/${duerp.id}`}>
-                                                    <Eye className="h-4 w-4 mr-2" />
-                                                    Consulter
-                                                </Link>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem asChild>
-                                                <a
-                                                    href={`/api/duerp/${duerp.id}/pdf`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                >
-                                                    <Download className="h-4 w-4 mr-2" />
-                                                    Télécharger PDF
-                                                </a>
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    <div className="flex items-center justify-end border-t sm:border-0 border-slate-50 pt-3 sm:pt-0">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors ml-auto">
+                                                    <MoreHorizontal className="h-5 w-5 text-slate-500" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem asChild>
+                                                    <Link href={`/dashboard/duerp/${duerp.id}`}>
+                                                        <Eye className="h-4 w-4 mr-2" />
+                                                        Consulter
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem asChild>
+                                                    <a
+                                                        href={`/api/duerp/${duerp.id}/pdf`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        <Download className="h-4 w-4 mr-2" />
+                                                        Télécharger PDF
+                                                    </a>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -179,9 +181,9 @@ export function DuerpClientDashboard({ companyName, duerps }: Props) {
                 </div>
 
                 {/* Rappel réglementaire */}
-                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg hover:border-amber-200 transition-all duration-300 group">
                     <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                        <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:bg-amber-100 transition-all duration-300 shadow-sm">
                             <Info className="h-5 w-5 text-amber-600" />
                         </div>
                         <div>

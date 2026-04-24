@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import bcrypt from "bcryptjs"
+import { getCurrentUser } from "@/lib/auth-helpers"
 
 // ============================================
 // HELPERS
@@ -47,7 +48,7 @@ export async function getAdminStats() {
         where: { status: "ACTIVE" },
         include: { plan: true }
     })
-    const revenuMensuel = subscriptions.reduce((acc, sub) => acc + sub.plan.prixMensuel, 0)
+    const revenuMensuel = subscriptions.reduce((acc: number, sub: any) => acc + (sub.customPrice ?? sub.plan.prixMensuel), 0)
 
     return {
         companies: companiesCount,
@@ -93,6 +94,8 @@ export async function getCompanies() {
         email: company.email || "",
         activite: company.metier?.nom || "Non défini",
         abonnement: company.subscription?.plan?.nom || "Aucun",
+        abonnementCode: company.subscription?.planCode || "",
+        abonnementStatus: company.subscription?.status || "",
         statutConformite: getConformiteStatus(company.duerps[0]),
         duerp: getDuerpStatus(company.duerps[0]),
         createdAt: company.createdAt
@@ -127,6 +130,7 @@ export async function createCompany(data: {
     contactName?: string
     contactRole?: string
     contactEmail?: string
+    selectedUtIds?: string[]
 }) {
     const company = await prisma.company.create({
         data: {
@@ -142,6 +146,9 @@ export async function createCompany(data: {
             contactName: data.contactName || null,
             contactRole: data.contactRole || null,
             contactEmail: data.contactEmail || null,
+            selectedUnitesTravail: data.selectedUtIds && data.selectedUtIds.length > 0
+                ? { connect: data.selectedUtIds.map(id => ({ id })) }
+                : undefined,
         }
     })
 
@@ -179,6 +186,8 @@ export async function updateCompany(id: string, data: {
     contactName?: string
     contactRole?: string
     contactEmail?: string
+    planCode?: string // Nouveau : gestion abonnement
+    selectedUtIds?: string[]
 }) {
     try {
         const company = await prisma.company.update({
@@ -196,8 +205,30 @@ export async function updateCompany(id: string, data: {
                 contactName: data.contactName !== undefined ? data.contactName : undefined,
                 contactRole: data.contactRole !== undefined ? data.contactRole : undefined,
                 contactEmail: data.contactEmail !== undefined ? data.contactEmail : undefined,
+                selectedUnitesTravail: data.selectedUtIds !== undefined ? {
+                    set: data.selectedUtIds.map(utId => ({ id: utId }))
+                } : undefined,
             }
         })
+
+        // Gérer l'abonnement si planCode fourni
+        if (data.planCode) {
+            await prisma.subscription.upsert({
+                where: { companyId: id },
+                update: {
+                    planCode: data.planCode,
+                    status: "ACTIVE",
+                    updatedAt: new Date()
+                },
+                create: {
+                    companyId: id,
+                    planCode: data.planCode,
+                    status: "ACTIVE",
+                    currentPeriodStart: new Date(),
+                    currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+                }
+            })
+        }
 
         revalidatePath("/admin/entreprises")
         revalidatePath(`/admin/entreprises/${id}`)
@@ -217,7 +248,16 @@ export async function getCompaniesSimple() {
     const companies = await prisma.company.findMany({
         select: {
             id: true,
-            name: true
+            name: true,
+            metierCode: true,
+            address: true,
+            city: true,
+            selectedUnitesTravail: {
+                select: {
+                    id: true,
+                    nom: true
+                }
+            }
         },
         orderBy: { name: "asc" }
     })
@@ -407,6 +447,152 @@ export async function deleteAdminAudit(id: string) {
     return { success: true }
 }
 
+export async function createAdminAudit(data: {
+    companyId: string
+    type: string
+    auditorId?: string
+    documents: { [key: string]: boolean }
+    risks: Array<{
+        risqueId?: string
+        categorie: string
+        nom: string
+        identifie: boolean
+        gravite?: number
+        frequence?: number
+    }>
+    commentaire?: string
+    proposedPlanCode?: string
+    proposedPrice?: number
+}) {
+    try {
+        const user = await getCurrentUser()
+        if (!user || user.role !== "ADMIN") {
+            return { error: "Non autorisé" }
+        }
+
+        // Calculer le score documentaire
+        const docKeys = Object.keys(data.documents)
+        const docOk = docKeys.filter(k => data.documents[k]).length
+        const docScore = docKeys.length > 0 ? Math.round((docOk / docKeys.length) * 100) : 0
+
+        const risquesIdentifies = data.risks.filter(r => r.identifie)
+        const scoreConformite = Math.max(0, Math.round(docScore - risquesIdentifies.length * 3))
+
+        const audit = await prisma.audit.create({
+            data: {
+                companyId: data.companyId,
+                type: data.type === "AUDIT_INITIAL" ? "AUDIT_INITIAL" : data.type === "SUIVI_ANNUEL" ? "SUIVI_ANNUEL" : "INITIAL",
+                dateAudit: new Date(),
+                dateRealisation: new Date(),
+                auditorId: data.auditorId || user.id,
+                status: "TERMINE",
+                scoreConformite,
+                documentsObligatoires: JSON.stringify(data.documents),
+                observations: data.commentaire || null,
+                proposedPlanCode: data.proposedPlanCode || null,
+                proposedPrice: data.proposedPrice ? Math.round(data.proposedPrice * 100) : null,
+                syntheseAutomatique: `Audit réalisé le ${new Date().toLocaleDateString("fr-FR")}. Score de conformité : ${scoreConformite}%. ${risquesIdentifies.length} risque(s) identifié(s). ${docOk}/${docKeys.length} documents conformes.`
+            }
+        })
+
+        // Notifier le client de l'entreprise auditée
+        const company = await prisma.company.findUnique({
+            where: { id: data.companyId },
+            include: { users: { select: { id: true, name: true } } }
+        })
+        if (company) {
+            await Promise.all(
+                company.users.map(u =>
+                    prisma.notification.create({
+                        data: {
+                            userId: u.id,
+                            type: "AUDIT_COMPLETE",
+                            title: "Votre audit est disponible",
+                            message: `L'audit de conformité de ${company.name} a été réalisé. Score : ${scoreConformite}%.`,
+                            actionUrl: "/dashboard",
+                        }
+                    })
+                )
+            )
+        }
+
+        // Notifier l'auditeur assigné
+        if (data.auditorId) {
+            await prisma.notification.create({
+                data: {
+                    userId: data.auditorId,
+                    type: "TACHE_ASSIGNEE",
+                    title: "Audit assigné",
+                    message: `Un audit a été créé pour ${company?.name || "une entreprise"}.`,
+                    actionUrl: "/auditeur/audits",
+                }
+            })
+        }
+
+        revalidatePath("/admin/audits")
+        revalidatePath("/dashboard")
+        return { success: true, audit }
+    } catch (error) {
+        console.error("Erreur createAdminAudit:", error)
+        return { error: "Erreur lors de la création de l'audit" }
+    }
+}
+
+
+export async function getRisquesParMetier(metierCode: string) {
+    try {
+        const risques = await prisma.risqueMetier.findMany({
+            where: {
+                metierCode,
+                isActive: true
+            },
+            include: {
+                categorie: true,
+                uniteTravail: true
+            },
+            orderBy: [
+                { categorie: { ordre: "asc" } },
+                { uniteTravail: { ordre: "asc" } },
+                { nom: "asc" }
+            ]
+        })
+
+        // Grouper par catégorie → UT
+        const grouped: Record<string, {
+            nom: string
+            code: string
+            uts: Record<string, {
+                nom: string
+                risques: Array<{ id: string; nom: string; description: string; gravite: number; frequence: number }>
+            }>
+        }> = {}
+
+        for (const r of risques) {
+            const catCode = r.categorieCode
+            if (!grouped[catCode]) {
+                grouped[catCode] = { nom: r.categorie.nom, code: catCode, uts: {} }
+            }
+            const utKey = r.uniteTravailId || "__general__"
+            const utNom = r.uniteTravail?.nom || "Général"
+            if (!grouped[catCode].uts[utKey]) {
+                grouped[catCode].uts[utKey] = { nom: utNom, risques: [] }
+            }
+            grouped[catCode].uts[utKey].risques.push({
+                id: r.id,
+                nom: r.nom,
+                description: r.description,
+                gravite: r.gravite,
+                frequence: r.frequence
+            })
+        }
+
+        return { success: true, grouped }
+    } catch (error) {
+        console.error("Erreur getRisquesParMetier:", error)
+        return { success: false, grouped: {} }
+    }
+}
+
 export async function deleteSignalement(id: string) {
     await prisma.signalement.delete({ where: { id } })
     revalidatePath("/admin/signalements")
@@ -438,6 +624,134 @@ export async function getDuerps() {
             : duerp.status === "DRAFT" ? "En cours"
                 : "En attente"
     }))
+}
+
+export async function createAdminDuerp(data: {
+    companyId: string
+    nextReviewDate?: string
+    lastUpdateReason?: string
+    // Métadonnées enrichies (Page 9 du DUERP)
+    metadata?: {
+        medecineTravail?: string
+        accidentHistory?: Array<{
+            date: string
+            salarie?: string
+            nature: string
+            causes: string
+            mesures: string
+        }>
+    }
+    evaluations: Array<{
+        risqueId: string
+        uniteTravail: string
+        frequence: number
+        gravite: number
+        niveauMaitrise: string
+        ponderation: number
+        risqueResiduel: number
+        prioriteAction: string
+        actionCorrective?: string
+        delai?: string
+        responsable?: string
+        observations?: string
+    }>
+}) {
+    try {
+        const existing = await prisma.duerpDocument.findMany({
+            where: { companyId: data.companyId },
+            orderBy: { version: "desc" },
+            take: 1
+        })
+        const version = (existing[0]?.version ?? 0) + 1
+
+        // Archiver l'ancien DUERP ACTIVE avant création du nouveau (versionning)
+        await prisma.duerpDocument.updateMany({
+            where: { companyId: data.companyId, status: "ACTIVE" },
+            data: { status: "ARCHIVED" }
+        })
+
+        // Récupérer automatiquement les accidents des 12 derniers mois depuis les signalements
+        const twelveMonthsAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+        const recentAccidents = await prisma.signalement.findMany({
+            where: {
+                companyId: data.companyId,
+                type: "ACCIDENT_TRAVAIL",
+                createdAt: { gte: twelveMonthsAgo },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 10,
+        })
+
+        // Fusionner les accidents de la DB avec ceux saisis manuellement
+        const autoAccidents = recentAccidents.map(s => ({
+            date: s.createdAt.toISOString().split("T")[0],
+            salarie: "",
+            nature: s.titre,
+            causes: s.description,
+            mesures: s.reponse || "En cours de traitement",
+        }))
+        const manualAccidents = data.metadata?.accidentHistory ?? []
+        const allAccidents = [...autoAccidents, ...manualAccidents]
+
+        const metadataPayload = {
+            ...(data.metadata ?? {}),
+            accidentHistory: allAccidents,
+        }
+
+        const duerp = await prisma.duerpDocument.create({
+            data: {
+                companyId: data.companyId,
+                version,
+                status: "DRAFT",
+                nextReviewDate: data.nextReviewDate ? new Date(data.nextReviewDate) : null,
+                lastUpdateReason: data.lastUpdateReason || null,
+                metadata: metadataPayload,
+                evaluations: {
+                    create: data.evaluations.map(ev => ({
+                        risqueId: ev.risqueId,
+                        uniteTravail: ev.uniteTravail,
+                        frequence: ev.frequence,
+                        gravite: ev.gravite,
+                        niveauRisque: ev.frequence * ev.gravite,
+                        niveauMaitrise: ev.niveauMaitrise,
+                        ponderation: ev.ponderation,
+                        risqueResiduel: ev.risqueResiduel,
+                        prioriteAction: ev.prioriteAction,
+                        actionCorrective: ev.actionCorrective || null,
+                        delai: ev.delai || null,
+                        responsable: ev.responsable || null,
+                        observations: ev.observations || null,
+                        mesuresAppliquees: "[]",
+                    }))
+                }
+            }
+        })
+
+        const company = await prisma.company.findUnique({
+            where: { id: data.companyId },
+            include: { users: { select: { id: true } } }
+        })
+        if (company) {
+            await Promise.all(company.users.map(u =>
+                prisma.notification.create({
+                    data: {
+                        userId: u.id,
+                        type: "DUERP_DISPONIBLE",
+                        title: "Votre DUERP est disponible",
+                        message: `Le Document Unique d'Évaluation des Risques Professionnels v${version} a été créé. Vous pouvez le consulter dans votre espace.`,
+                        actionUrl: "/dashboard/duerp",
+                    }
+                })
+            ))
+        }
+
+        revalidatePath("/admin/duerp")
+        revalidatePath("/dashboard")
+        return { success: true, duerp }
+    } catch (error) {
+        console.error("Erreur createAdminDuerp:", error)
+        return { error: "Erreur lors de la création du DUERP" }
+    }
 }
 
 // ============================================
@@ -583,11 +897,30 @@ export async function getSubscriptions() {
 
     return subscriptions.map(sub => ({
         id: sub.id,
+        companyId: sub.companyId,
         entreprise: sub.company.name,
         plan: sub.plan.nom,
-        prix: `${sub.plan.prixMensuel / 100}€/mois`,
-        statut: sub.status === "ACTIVE" ? "Actif" : "En attente"
+        planCode: sub.planCode,
+        prix: sub.customPrice ? `${sub.customPrice / 100}€/mois (Perso)` : `${sub.plan.prixMensuel / 100}€/mois`,
+        statut: sub.status,
+        customPrice: sub.customPrice
     }))
+}
+
+export async function updateSubscriptionStatus(id: string, status: string) {
+    try {
+        await prisma.subscription.update({
+            where: { id },
+            data: { status }
+        })
+        revalidatePath("/admin/abonnements")
+        // Force revalidation of client dashboard so suspension banner appears immediately
+        revalidatePath("/dashboard", "layout")
+        revalidatePath("/dashboard")
+        return { success: true }
+    } catch (error) {
+        return { error: "Erreur lors de la mise à jour du statut" }
+    }
 }
 
 export async function getSubscriptionStats() {
@@ -596,7 +929,7 @@ export async function getSubscriptionStats() {
         include: { plan: true }
     })
 
-    const revenuMensuel = subscriptions.reduce((acc, sub) => acc + sub.plan.prixMensuel, 0)
+    const revenuMensuel = subscriptions.reduce((acc: number, sub: any) => acc + (sub.customPrice ?? sub.plan.prixMensuel), 0)
     const abonnementsActifs = subscriptions.length
 
     return {
@@ -687,6 +1020,14 @@ export async function toggleMetierStatus(id: string) {
     } catch (error) {
         return { error: "Erreur lors de la mise à jour" }
     }
+}
+
+export async function getMetierUTs(metierCode: string) {
+    const uts = await prisma.uniteTravail.findMany({
+        where: { metierCode },
+        orderBy: { ordre: "asc" }
+    })
+    return uts.map(ut => ({ id: ut.id, nom: ut.nom, description: ut.description }))
 }
 
 // New function for fetching risques by UniteTravail
@@ -1336,4 +1677,144 @@ export async function getPlans() {
         nom: p.nom,
         prix: p.prixMensuel / 100
     }))
+}
+
+export async function updateSubscriptionPrice(subscriptionId: string, customPrice: number | null) {
+    try {
+        await prisma.subscription.update({
+            where: { id: subscriptionId },
+            data: {
+                customPrice: customPrice !== null ? Math.round(customPrice * 100) : null
+            }
+        })
+
+        revalidatePath("/admin/abonnements")
+        revalidatePath("/dashboard", "layout")
+        revalidatePath("/dashboard")
+        return { success: true }
+    } catch (error) {
+        console.error("Erreur updateSubscriptionPrice:", error)
+        return { error: "Erreur lors de la mise à jour du prix" }
+    }
+}
+
+// ============================================
+// NOTES INTERNES
+// ============================================
+
+const INTERNAL_ROLES = ["ADMIN", "AUDITOR", "COMMERCIAL"]
+
+export async function getInternalNotes(companyId: string, duerpId?: string) {
+    const user = await getCurrentUser()
+    if (!user || !INTERNAL_ROLES.includes(user.role)) return []
+
+    const where: any = { companyId }
+    if (duerpId) where.duerpId = duerpId
+
+    const notes = await prisma.internalNote.findMany({
+        where,
+        orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+        include: {
+            author: { select: { id: true, name: true, role: true } },
+        },
+    })
+    return notes
+}
+
+export async function createInternalNote(data: {
+    companyId: string
+    duerpId?: string | null
+    content: string
+    category?: string
+}) {
+    const user = await getCurrentUser()
+    if (!user || !INTERNAL_ROLES.includes(user.role)) {
+        return { error: "Accès refusé" }
+    }
+    if (!data.content?.trim()) return { error: "Le contenu est requis" }
+
+    try {
+        const note = await prisma.internalNote.create({
+            data: {
+                id: `note_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+                companyId: data.companyId,
+                duerpId: data.duerpId ?? null,
+                authorId: user.id,
+                content: data.content.trim(),
+                category: data.category ?? "GENERAL",
+            },
+            include: { author: { select: { id: true, name: true, role: true } } },
+        })
+
+        revalidatePath(`/admin/entreprises/${data.companyId}`)
+        if (data.duerpId) revalidatePath(`/admin/duerp/${data.duerpId}`)
+        return { success: true, note }
+    } catch (error) {
+        console.error("Erreur createInternalNote:", error)
+        return { error: "Erreur lors de la création de la note" }
+    }
+}
+
+export async function updateInternalNote(id: string, content: string) {
+    const user = await getCurrentUser()
+    if (!user || !INTERNAL_ROLES.includes(user.role)) return { error: "Accès refusé" }
+
+    const note = await prisma.internalNote.findUnique({ where: { id } })
+    if (!note) return { error: "Note introuvable" }
+    // Only the author or ADMIN can edit
+    if (note.authorId !== user.id && user.role !== "ADMIN") {
+        return { error: "Vous ne pouvez modifier que vos propres notes" }
+    }
+
+    try {
+        await prisma.internalNote.update({
+            where: { id },
+            data: { content: content.trim(), updatedAt: new Date() },
+        })
+        revalidatePath(`/admin/entreprises/${note.companyId}`)
+        if (note.duerpId) revalidatePath(`/admin/duerp/${note.duerpId}`)
+        return { success: true }
+    } catch (error) {
+        console.error("Erreur updateInternalNote:", error)
+        return { error: "Erreur lors de la mise à jour de la note" }
+    }
+}
+
+export async function deleteInternalNote(id: string) {
+    const user = await getCurrentUser()
+    if (!user || !INTERNAL_ROLES.includes(user.role)) return { error: "Accès refusé" }
+
+    const note = await prisma.internalNote.findUnique({ where: { id } })
+    if (!note) return { error: "Note introuvable" }
+    // Only the author or ADMIN can delete
+    if (note.authorId !== user.id && user.role !== "ADMIN") {
+        return { error: "Vous ne pouvez supprimer que vos propres notes" }
+    }
+
+    try {
+        await prisma.internalNote.delete({ where: { id } })
+        revalidatePath(`/admin/entreprises/${note.companyId}`)
+        if (note.duerpId) revalidatePath(`/admin/duerp/${note.duerpId}`)
+        return { success: true }
+    } catch (error) {
+        console.error("Erreur deleteInternalNote:", error)
+        return { error: "Erreur lors de la suppression de la note" }
+    }
+}
+
+export async function pinInternalNote(id: string, isPinned: boolean) {
+    const user = await getCurrentUser()
+    if (!user || user.role !== "ADMIN") return { error: "Réservé aux administrateurs" }
+
+    const note = await prisma.internalNote.findUnique({ where: { id } })
+    if (!note) return { error: "Note introuvable" }
+
+    try {
+        await prisma.internalNote.update({ where: { id }, data: { isPinned } })
+        revalidatePath(`/admin/entreprises/${note.companyId}`)
+        return { success: true }
+    } catch (error) {
+        console.error("Erreur pinInternalNote:", error)
+        return { error: "Erreur lors de la mise à jour de la note" }
+    }
 }

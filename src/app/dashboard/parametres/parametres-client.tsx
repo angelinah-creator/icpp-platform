@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Lock, CreditCard, Bell, User, Save, Check } from "lucide-react"
+import { Lock, CreditCard, Bell, User, Save, Check, ExternalLink, Loader2 } from "lucide-react"
+import { createCheckoutSession, createCustomerPortalSession } from "@/server/actions/stripe"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,6 +19,9 @@ interface ProfileData {
     companyCity: string
     planName: string | null
     planStatus: string | null
+    customPrice: number | null
+    proposedPrice: number | null
+    stripeCustomerId: string | null
 }
 
 type Tab = "securite" | "abonnement" | "notifications" | "compte"
@@ -33,7 +37,7 @@ export default function ParametresClient({ profile }: { profile: ProfileData }) 
     ]
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-white border-b border-slate-200 px-8 py-5">
                 <h1 className="text-2xl font-semibold text-slate-900">Paramètres</h1>
                 <p className="text-slate-500 text-sm mt-0.5">Gérez les paramètres de votre compte</p>
@@ -170,22 +174,159 @@ function SecurityTab() {
 }
 
 function AbonnementTab({ profile }: { profile: ProfileData }) {
+    const [loading, setLoading] = useState(false)
+    const router = useRouter()
+
+    async function handleCheckout(planCode: string) {
+        setLoading(true)
+        try {
+            const result = await createCheckoutSession(planCode)
+            if (typeof result === 'object') {
+                alert(result.error)
+                return
+            }
+            window.location.href = result
+        } catch {
+            alert("Erreur lors de l'initialisation du paiement")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function handlePortal() {
+        setLoading(true)
+        try {
+            const result = await createCustomerPortalSession()
+            if (typeof result === 'object') {
+                alert(result.error)
+                return
+            }
+            window.location.href = result
+        } catch {
+            alert("Erreur lors de l'accès au portail de gestion")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const isSubscribed = profile.planStatus === "ACTIVE" || profile.planStatus === "TRIALING"
+
     return (
         <div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Mon abonnement</h2>
-
-            <div className="bg-blue-50 rounded-lg p-5 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-semibold text-blue-900">
-                        {profile.planName || "Plan Standard"}
-                    </h3>
-                    <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                        {profile.planStatus === "ACTIVE" ? "Actif" : profile.planStatus || "Actif"}
-                    </Badge>
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Mon abonnement</h2>
+                    <p className="text-sm text-slate-500">Gérez votre offre et vos factures</p>
                 </div>
-                <p className="text-sm text-slate-600">
-                    Pour toute question concernant votre abonnement, contactez votre référent ICPP.
-                </p>
+                {isSubscribed && profile.stripeCustomerId && (
+                    <Button variant="outline" size="sm" onClick={handlePortal} disabled={loading}>
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ExternalLink className="h-4 w-4 mr-2" />}
+                        Gérer sur Stripe
+                    </Button>
+                )}
+            </div>
+
+            <div className={`rounded-xl p-6 border ${isSubscribed ? "bg-blue-50 border-blue-100" : "bg-white border-slate-200"}`}>
+                <div className="flex items-start justify-between mb-6">
+                    <div>
+                        <Badge className={`mb-2 ${isSubscribed ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}>
+                            PACK ACTUEL
+                        </Badge>
+                        <h3 className="text-2xl font-bold text-slate-900">
+                            {profile.planName || "Aucun abonnementactif"}
+                        </h3>
+                        <p className="text-slate-600 mt-1">
+                            Statut : <span className={`font-medium ${isSubscribed ? "text-green-600" : "text-red-500"}`}>
+                                {profile.planStatus === "ACTIVE" ? "Actif" : profile.planStatus === "SUSPENDED" ? "Suspendu" : "Inactif"}
+                            </span>
+                        </p>
+                    </div>
+                    {!isSubscribed && (
+                        <div className="text-right">
+                            <p className="text-sm text-slate-500 mb-1">
+                                {profile.proposedPrice ? "Offre spéciale" : "À partir de"}
+                            </p>
+                            <p className="text-2xl font-bold text-slate-900">
+                                {profile.proposedPrice ? (profile.proposedPrice / 100).toFixed(2) : "19"}€
+                                <span className="text-sm font-normal text-slate-500">/mois</span>
+                            </p>
+                            {profile.proposedPrice && (
+                                <p className="text-xs text-blue-600 font-medium mt-1 italic">
+                                    Prix proposé suite à l'audit
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {isSubscribed && profile.customPrice && (
+                    <div className="mb-6 p-4 bg-white/50 rounded-lg border border-blue-100">
+                        <p className="text-sm text-blue-800 font-medium">Prix personnalisé actif :</p>
+                        <p className="text-xl font-bold text-slate-900">
+                            {(profile.customPrice / 100).toFixed(2)}€ <span className="text-sm font-normal text-slate-500">/mois</span>
+                        </p>
+                    </div>
+                )}
+
+                {!isSubscribed || (isSubscribed && !profile.stripeCustomerId) ? (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                            {/* Si un plan est déjà assigné (ex: PRO pour test), on ne montre que celui-là */}
+                            {profile.planName ? (
+                                <div className="border-2 border-blue-500 rounded-lg p-6 bg-blue-50/30">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h4 className="font-bold text-slate-900 text-lg">{profile.planName}</h4>
+                                            <p className="text-sm text-slate-500 italic">Votre pack sélectionné</p>
+                                        </div>
+                                        <Badge className="bg-blue-600 text-white font-bold">PROPOSÉ</Badge>
+                                    </div>
+                                    <div className="mb-6">
+                                        <p className="text-3xl font-extrabold text-slate-900">
+                                            {profile.customPrice ? (profile.customPrice / 100).toFixed(2) : profile.planName === "PRO" ? "39" : profile.planName === "PREMIUM" ? "79" : "19"}€
+                                            <span className="text-base font-normal text-slate-500 ml-1">/mois</span>
+                                        </p>
+                                    </div>
+                                    <Button
+                                        className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 shadow-md"
+                                        onClick={() => handleCheckout(profile.planName!)}
+                                        disabled={loading}
+                                    >
+                                        {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CreditCard className="h-5 w-5 mr-2" />}
+                                        Payer mon abonnement
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                                    {["ESSENTIEL", "PRO", "PREMIUM"].map((plan) => (
+                                        <div key={plan} className="border border-slate-200 rounded-lg p-4 bg-white hover:border-blue-300 transition-colors">
+                                            <h4 className="font-semibold text-slate-900">{plan}</h4>
+                                            <p className="text-xs text-slate-500 mb-4">Plan {plan.toLowerCase()}</p>
+                                            <Button
+                                                className="w-full h-8 text-xs"
+                                                variant={plan === "ESSENTIEL" ? "default" : "outline"}
+                                                onClick={() => handleCheckout(plan)}
+                                                disabled={loading}
+                                            >
+                                                {profile.proposedPrice ? "Accepter l'offre" : "Souscrire"}
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <p className="text-xs text-slate-400 italic">
+                            * Le paiement sécurisé est opéré par Stripe. Une fois le paiement validé, vos accès seront automatiquement activés.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-100/50 p-3 rounded-lg">
+                            <Check className="h-4 w-4" />
+                            Votre abonnement est géré automatiquement via Stripe.
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Search, Bell, ListTodo, CheckCircle, Clock } from "lucide-react"
+import { Search, Bell, ListTodo, CheckCircle, Clock, FileText, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,7 +38,7 @@ export function TechnicienDashboardClient({ data, taches }: TechnicienDashboardC
     const userName = data?.user?.name || "Technicien"
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header */}
             <header className="bg-white border-b border-slate-200 px-8 py-4">
                 <div className="flex items-center justify-between">
@@ -64,9 +64,9 @@ export function TechnicienDashboardClient({ data, taches }: TechnicienDashboardC
             <div className="p-8">
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:-translate-y-1 transition-all duration-300 group">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center">
+                            <div className="h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center group-hover:scale-110 group-hover:bg-orange-200 transition-all duration-300">
                                 <ListTodo className="h-6 w-6 text-orange-600" />
                             </div>
                             <div>
@@ -76,9 +76,9 @@ export function TechnicienDashboardClient({ data, taches }: TechnicienDashboardC
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:-translate-y-1 transition-all duration-300 group">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-200 transition-all duration-300">
                                 <Clock className="h-6 w-6 text-blue-600" />
                             </div>
                             <div>
@@ -88,9 +88,9 @@ export function TechnicienDashboardClient({ data, taches }: TechnicienDashboardC
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:-translate-y-1 transition-all duration-300 group">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center">
+                            <div className="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center group-hover:scale-110 group-hover:bg-green-200 transition-all duration-300">
                                 <CheckCircle className="h-6 w-6 text-green-600" />
                             </div>
                             <div>
@@ -101,8 +101,24 @@ export function TechnicienDashboardClient({ data, taches }: TechnicienDashboardC
                     </div>
                 </div>
 
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-4 mb-8">
+                    <Link href="/technicien/taches">
+                        <Button className="bg-[#4A7FFF] hover:bg-[#3968E6] text-white px-6 py-2 rounded-lg font-medium">
+                            <FileText className="h-4 w-4 mr-2" />
+                            Mes rapports
+                        </Button>
+                    </Link>
+                    <Link href="/technicien/taches">
+                        <Button variant="outline" className="border-slate-300 bg-white hover:bg-slate-50 px-6 py-2 rounded-lg font-medium">
+                            <Plus className="h-4 w-4 mr-2 text-slate-600" />
+                            Nouvelle intervention
+                        </Button>
+                    </Link>
+                </div>
+
                 {/* Recent Tasks */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-500">
                     <div className="p-6 border-b border-slate-200 flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-slate-900">Mes dernières tâches</h2>
                         <Link href="/technicien/taches">

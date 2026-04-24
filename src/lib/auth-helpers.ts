@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
+import { hasSubscriptionAccess } from "@/lib/subscription-access"
 import { redirect } from "next/navigation"
 
 /**
@@ -48,6 +50,35 @@ export async function requireRole(allowedRoles: string[]) {
             // Unknown role - redirect to login
             redirect("/login")
         }
+    }
+
+    return user
+}
+
+/**
+ * Require an authenticated client with an active subscription.
+ * If the user has no active access, always redirect to onboarding/payment page.
+ */
+export async function requireActiveClientSubscription() {
+    const user = await requireRole(["CLIENT"])
+
+    const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+            company: {
+                select: {
+                    subscription: {
+                        select: {
+                            status: true,
+                        },
+                    },
+                },
+            },
+        },
+    })
+
+    if (!hasSubscriptionAccess(dbUser?.company?.subscription?.status)) {
+        redirect("/abonnement")
     }
 
     return user

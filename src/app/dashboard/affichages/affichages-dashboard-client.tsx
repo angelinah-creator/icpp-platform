@@ -99,10 +99,10 @@ export function AffichagesClientDashboard({ companyName, affichages }: Props) {
                                         {items.map((affichage) => (
                                             <div
                                                 key={affichage.id}
-                                                className="bg-white rounded-xl border border-slate-200 p-5 flex items-center justify-between"
+                                                className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                                             >
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${affichage.downloaded ? "bg-green-50" : "bg-slate-50"
+                                                <div className="flex items-start sm:items-center gap-4 min-w-0">
+                                                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${affichage.downloaded ? "bg-green-50" : "bg-slate-50"
                                                         }`}>
                                                         {affichage.downloaded ? (
                                                             <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -110,34 +110,38 @@ export function AffichagesClientDashboard({ companyName, affichages }: Props) {
                                                             <FileText className="h-5 w-5 text-slate-400" />
                                                         )}
                                                     </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <h3 className="font-semibold text-slate-900">{affichage.title}</h3>
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <h3 className="font-semibold text-slate-900 line-clamp-1">{affichage.title}</h3>
                                                             {affichage.isLocked && (
-                                                                <Lock className="h-3.5 w-3.5 text-slate-400" />
+                                                                <Lock className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                                                             )}
+                                                            <div className="sm:hidden ml-auto">
+                                                                <Badge className="bg-red-100 text-red-700 hover:bg-red-100 scale-75 origin-right">Obligatoire</Badge>
+                                                            </div>
                                                         </div>
-                                                        <p className="text-sm text-slate-500">{affichage.description}</p>
+                                                        <p className="text-sm text-slate-500 line-clamp-2 sm:line-clamp-none">{affichage.description}</p>
                                                         {affichage.generatedAt && (
-                                                            <p className="text-xs text-slate-400 mt-0.5">
+                                                            <p className="text-xs text-slate-400 mt-1">
                                                                 Généré le {new Date(affichage.generatedAt).toLocaleDateString("fr-FR")}
                                                             </p>
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                    <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Obligatoire</Badge>
+                                                <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-0 border-slate-50">
+                                                    <Badge className="hidden sm:inline-flex bg-red-100 text-red-700 hover:bg-red-100">Obligatoire</Badge>
                                                     <a
                                                         href={`/api/affichages/${affichage.id}/pdf`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
+                                                        className="w-full sm:w-auto"
                                                     >
                                                         <Button
                                                             variant={affichage.downloaded ? "outline" : "default"}
                                                             size="sm"
                                                             className={affichage.downloaded
-                                                                ? "text-sm"
-                                                                : "bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                                                                ? "text-sm w-full sm:w-auto"
+                                                                : "bg-blue-600 hover:bg-blue-700 text-white text-sm w-full sm:w-auto"
                                                             }
                                                         >
                                                             <Download className="h-4 w-4 mr-2" />

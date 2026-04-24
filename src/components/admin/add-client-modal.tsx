@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import {
     Select,
@@ -30,10 +31,47 @@ interface AddClientModalProps {
     plans?: { code: string; nom: string; prix: number }[]
 }
 
+interface UT {
+    id: string
+    nom: string
+    description: string | null
+}
+
 export function AddClientModal({ open, onOpenChange, onSuccess, metiers = [], plans = [] }: AddClientModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [selectedMetier, setSelectedMetier] = useState("")
     const router = useRouter()
+
+    // Unités de Travail
+    const [availableUTs, setAvailableUTs] = useState<UT[]>([])
+    const [selectedUTIds, setSelectedUTIds] = useState<string[]>([])
+    const [isLoadingUTs, setIsLoadingUTs] = useState(false)
+
+    useEffect(() => {
+        if (!selectedMetier) {
+            setAvailableUTs([])
+            setSelectedUTIds([])
+            return
+        }
+        setIsLoadingUTs(true)
+        fetch(`/api/metier/${encodeURIComponent(selectedMetier)}/uts`)
+            .then(res => res.json())
+            .then((uts: UT[]) => {
+                setAvailableUTs(uts)
+                setSelectedUTIds(uts.map(ut => ut.id))
+            })
+            .catch(err => console.error("Erreur chargement UTs:", err))
+            .finally(() => setIsLoadingUTs(false))
+    }, [selectedMetier])
+
+    const handleUTToggle = (id: string, checked: boolean) => {
+        if (checked) {
+            setSelectedUTIds(prev => [...prev, id])
+        } else {
+            setSelectedUTIds(prev => prev.filter(utId => utId !== id))
+        }
+    }
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
@@ -51,14 +89,18 @@ export function AddClientModal({ open, onOpenChange, onSuccess, metiers = [], pl
                 address: formData.get("adresse") as string || undefined,
                 postalCode: formData.get("codePostal") as string || undefined,
                 city: formData.get("ville") as string || undefined,
-                metierCode: formData.get("metier") as string || undefined,
+                metierCode: selectedMetier || undefined,
                 employeeCount: parseInt(formData.get("nombreSalaries") as string) || 1,
-                planCode: formData.get("formule") as string || undefined
+                planCode: formData.get("formule") as string || undefined,
+                selectedUtIds: selectedUTIds,
             })
 
             if ('error' in result) {
                 setError(result.error as string)
             } else {
+                setSelectedMetier("")
+                setAvailableUTs([])
+                setSelectedUTIds([])
                 onOpenChange(false)
                 onSuccess?.()
                 router.refresh()
@@ -139,28 +181,31 @@ export function AddClientModal({ open, onOpenChange, onSuccess, metiers = [], pl
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="metier" className="text-sm">Métier *</Label>
-                                <Select name="metier" required>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Sélectionner un métier" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {metiers.length > 0 ? (
-                                            metiers.map((m) => (
-                                                <SelectItem key={m.code} value={m.code}>{m.nom}</SelectItem>
-                                            ))
-                                        ) : (
-                                            <>
-                                                <SelectItem value="COIFFURE">Coiffure</SelectItem>
-                                                <SelectItem value="RESTAURATION">Restauration</SelectItem>
-                                                <SelectItem value="BOULANGERIE">Boulangerie</SelectItem>
-                                                <SelectItem value="GARAGE">Garage automobile</SelectItem>
-                                                <SelectItem value="ESTHETIQUE">Esthétique</SelectItem>
-                                                <SelectItem value="COMMERCE">Commerce</SelectItem>
-                                                <SelectItem value="BATIMENT">Bâtiment</SelectItem>
-                                            </>
-                                        )}
-                                    </SelectContent>
-                                </Select>
+                                <select
+                                    id="metier"
+                                    name="metier"
+                                    value={selectedMetier}
+                                    onChange={(e) => setSelectedMetier(e.target.value)}
+                                    required
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    <option value="">Sélectionner un métier</option>
+                                    {metiers.length > 0 ? (
+                                        metiers.map((m) => (
+                                            <option key={m.code} value={m.code}>{m.nom}</option>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <option value="COIFFURE">Coiffure</option>
+                                            <option value="RESTAURATION">Restauration</option>
+                                            <option value="BOULANGERIE">Boulangerie</option>
+                                            <option value="GARAGE">Garage automobile</option>
+                                            <option value="ESTHETIQUE">Esthétique</option>
+                                            <option value="COMMERCE">Commerce</option>
+                                            <option value="BATIMENT">Bâtiment</option>
+                                        </>
+                                    )}
+                                </select>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="activiteDetaillee" className="text-sm">Activité détaillée</Label>
@@ -171,6 +216,45 @@ export function AddClientModal({ open, onOpenChange, onSuccess, metiers = [], pl
                                 />
                             </div>
                         </div>
+
+                        {/* Unités de travail dynamiques */}
+                        {selectedMetier && (
+                            <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                                <div>
+                                    <Label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                                        <Building2 className="h-4 w-4 text-blue-600" />
+                                        Unités de travail présentes dans l&apos;établissement
+                                    </Label>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Cochez les unités réellement présentes. Elles définiront la base du DUERP.
+                                    </p>
+                                </div>
+                                {isLoadingUTs ? (
+                                    <div className="text-sm text-slate-400">Chargement...</div>
+                                ) : availableUTs.length > 0 ? (
+                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                        {availableUTs.map((ut) => (
+                                            <div key={ut.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`modal-ut-${ut.id}`}
+                                                    checked={selectedUTIds.includes(ut.id)}
+                                                    onCheckedChange={(checked) => handleUTToggle(ut.id, checked as boolean)}
+                                                />
+                                                <label
+                                                    htmlFor={`modal-ut-${ut.id}`}
+                                                    className="text-sm font-medium cursor-pointer leading-none"
+                                                >
+                                                    {ut.nom}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-amber-600">Aucune unité de travail configurée pour ce métier.</div>
+                                )}
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <Label htmlFor="nombreSalaries" className="text-sm">Nombre de salariés *</Label>
                             <Input
