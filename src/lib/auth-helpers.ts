@@ -70,6 +70,7 @@ export async function requireActiveClientSubscription() {
                     subscription: {
                         select: {
                             status: true,
+                            currentPeriodEnd: true,
                         },
                     },
                 },
@@ -77,7 +78,7 @@ export async function requireActiveClientSubscription() {
         },
     })
 
-    if (!hasSubscriptionAccess(dbUser?.company?.subscription?.status)) {
+    if (!hasSubscriptionAccess(dbUser?.company?.subscription)) {
         redirect("/abonnement")
     }
 

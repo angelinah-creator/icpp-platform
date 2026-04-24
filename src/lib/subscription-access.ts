@@ -1,8 +1,15 @@
 export const ACTIVE_SUBSCRIPTION_STATUSES = ["ACTIVE"] as const
 
-export function hasSubscriptionAccess(status?: string | null): boolean {
-    if (!status) return false
-    return ACTIVE_SUBSCRIPTION_STATUSES.includes(status as (typeof ACTIVE_SUBSCRIPTION_STATUSES)[number])
+export function hasSubscriptionAccess(subscription?: { status?: string | null; currentPeriodEnd?: Date | null } | null): boolean {
+    if (!subscription?.status) return false
+    const isActive = ACTIVE_SUBSCRIPTION_STATUSES.includes(subscription.status as any)
+    if (!isActive) return false
+
+    if (subscription.currentPeriodEnd) {
+        return new Date(subscription.currentPeriodEnd).getTime() > Date.now()
+    }
+
+    return true
 }
 
 export function getSubscriptionStatusLabel(status?: string | null): string {

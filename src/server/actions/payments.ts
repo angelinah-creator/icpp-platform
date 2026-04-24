@@ -221,7 +221,7 @@ export async function getSubscriptionOnboardingData() {
             id: company.id,
             name: company.name,
             metier: company.metier?.nom || "Entreprise cliente",
-            setupFeePaid: company.setupFeePaid,
+            setupFeePaid: (company as any).setupFeePaid || company.subscription?.setupFeePaid,
         },
         subscription: company.subscription
             ? {
@@ -243,7 +243,7 @@ export async function getSubscriptionOnboardingData() {
                 fonctionnalites: JSON.parse(assignedPlan.fonctionnalites || "[]") as string[],
             }
             : null,
-        hasAccess: hasSubscriptionAccess(company.subscription?.status),
+        hasAccess: hasSubscriptionAccess(company.subscription),
         collectors,
         plans: plans.map((plan) => ({
             ...plan,
