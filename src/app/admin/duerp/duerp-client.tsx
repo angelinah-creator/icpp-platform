@@ -197,6 +197,28 @@ export function DuerpClient({ initialDuerps }: { initialDuerps: Duerp[] }) {
                                                             )}
                                                         </a>
                                                     </DropdownMenuItem>
+                                                    {duerp.statut === "Signé" && (
+                                                        <DropdownMenuItem asChild className="cursor-pointer">
+                                                            <a
+                                                                href={`/api/duerp/${duerp.id}/attestation`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                            >
+                                                                <ShieldCheck className="h-4 w-4 mr-2" />
+                                                                Attestation de conformité
+                                                            </a>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuItem asChild className="cursor-pointer text-orange-600 focus:text-orange-600">
+                                                        <a
+                                                            href={`/api/duerp/${duerp.id}/attestation-retrait?motif=MISE_A_JOUR`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            <FileText className="h-4 w-4 mr-2" />
+                                                            Attestation de retrait / MAJ
+                                                        </a>
+                                                    </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>

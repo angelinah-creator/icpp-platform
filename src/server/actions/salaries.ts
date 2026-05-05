@@ -33,12 +33,15 @@ export async function createSalarie(data: {
     poste: string
     uniteTravail: string
     dateEntree: string
+    dateSortie?: string
     typeContrat: string
     email?: string
     telephone?: string
 }) {
     const companyId = await getClientCompanyId()
     if (!companyId) return { error: "Non autorisé" }
+
+    const isActive = !data.dateSortie
 
     await prisma.salarie.create({
         data: {
@@ -48,9 +51,11 @@ export async function createSalarie(data: {
             poste: data.poste,
             uniteTravail: data.uniteTravail,
             dateEntree: new Date(data.dateEntree),
+            dateSortie: data.dateSortie ? new Date(data.dateSortie) : null,
             typeContrat: data.typeContrat,
             email: data.email || null,
             telephone: data.telephone || null,
+            isActive,
         }
     })
 
@@ -64,6 +69,7 @@ export async function updateSalarie(id: string, data: {
     poste: string
     uniteTravail: string
     dateEntree: string
+    dateSortie?: string
     typeContrat: string
     email?: string
     telephone?: string
@@ -75,6 +81,8 @@ export async function updateSalarie(id: string, data: {
     const existing = await prisma.salarie.findUnique({ where: { id } })
     if (!existing || existing.companyId !== companyId) return { error: "Salarié introuvable" }
 
+    const isActive = data.isActive !== undefined ? data.isActive : !data.dateSortie
+
     await prisma.salarie.update({
         where: { id },
         data: {
@@ -83,10 +91,11 @@ export async function updateSalarie(id: string, data: {
             poste: data.poste,
             uniteTravail: data.uniteTravail,
             dateEntree: new Date(data.dateEntree),
+            dateSortie: data.dateSortie ? new Date(data.dateSortie) : null,
             typeContrat: data.typeContrat,
             email: data.email || null,
             telephone: data.telephone || null,
-            isActive: data.isActive ?? true,
+            isActive,
         }
     })
 

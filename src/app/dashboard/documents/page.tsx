@@ -102,14 +102,53 @@ async function getDocumentsData() {
         }
     ]
 
+    // ── Historique attestations ────────────────────────────────────────────
+    // Dérivé des données DUERP existantes (sans table supplémentaire)
+    const attestationHistory: Array<{
+        id: string
+        type: "conformite" | "retrait"
+        label: string
+        duerp: { id: string; version: number }
+        date: string
+    }> = []
+
+    for (const d of allDuerps) {
+        if (d.signedAt) {
+            attestationHistory.push({
+                id: `attest-conf-${d.id}`,
+                type: "conformite",
+                label: `Attestation de conformité — DUERP v${d.version}.0`,
+                duerp: { id: d.id, version: d.version },
+                date: new Date(d.signedAt).toLocaleDateString("fr-FR"),
+            })
+        }
+        if (d.status === "ARCHIVED") {
+            attestationHistory.push({
+                id: `attest-ret-${d.id}`,
+                type: "retrait",
+                label: `Attestation de retrait — DUERP v${d.version}.0 archivé`,
+                duerp: { id: d.id, version: d.version },
+                date: new Date(d.updatedAt ?? d.createdAt).toLocaleDateString("fr-FR"),
+            })
+        }
+    }
+
+    // Trier par date décroissante
+    attestationHistory.sort((a, b) => {
+        const da = new Date(a.date.split("/").reverse().join("-")).getTime()
+        const db = new Date(b.date.split("/").reverse().join("-")).getTime()
+        return db - da
+    })
+
     const stats = {
         signed: documents.filter(d => d.status === "signed").length,
         pending: documents.filter(d => d.status === "pending").length,
         todo: documents.filter(d => d.status === "todo").length
     }
 
-    return { documents, stats }
+    return { documents, stats, attestationHistory }
 }
+
 
 
 function StatCard({ icon: Icon, count, label, color }: { icon: React.ElementType, count: number, label: string, color: "green" | "orange" | "red" }) {
@@ -261,6 +300,56 @@ export default async function DocumentsPage() {
                         ))}
                     </div>
                 </div>
+
+                {/* ── Historique des attestations ── */}
+                {data.attestationHistory.length > 0 && (
+                    <div className="mt-8">
+                        <h2 className="text-lg font-semibold text-slate-900 mb-4">Historique des attestations</h2>
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                            <div className="divide-y divide-slate-100">
+                                {data.attestationHistory.map((item) => (
+                                    <div key={item.id} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                                item.type === "conformite" ? "bg-emerald-50" : "bg-amber-50"
+                                            }`}>
+                                                {item.type === "conformite"
+                                                    ? <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                                                    : <AlertCircle className="h-5 w-5 text-amber-600" />
+                                                }
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-slate-900 text-sm">{item.label}</p>
+                                                <p className="text-xs text-slate-500 mt-0.5">
+                                                    {item.type === "conformite" ? "Générée le" : "Archivé le"} {item.date}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                                item.type === "conformite"
+                                                    ? "bg-emerald-100 text-emerald-700"
+                                                    : "bg-amber-100 text-amber-700"
+                                            }`}>
+                                                {item.type === "conformite" ? "Conformité" : "Retrait"}
+                                            </span>
+                                            <a
+                                                href={item.type === "conformite"
+                                                    ? `/api/duerp/${item.duerp.id}/attestation`
+                                                    : `/api/duerp/${item.duerp.id}/attestation-retrait?motif=MISE_A_JOUR`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                title="Télécharger l'attestation"
+                                            >
+                                                <Download className="h-4 w-4 text-slate-400 hover:text-blue-600 transition-colors" />
+                                            </a>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

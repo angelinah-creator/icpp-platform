@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer"
 import React from "react"
-import { ContractPdfDocument } from "@/lib/pdf/contract-pdf"
+import { ContratPDF } from "@/lib/pdf/contrat-pdf"
 
 export async function GET(
     _request: NextRequest,
@@ -77,15 +77,9 @@ export async function GET(
         signatureDataUrl = ""
     }
 
-    const document = React.createElement(ContractPdfDocument as React.ComponentType<any>, {
-        data: {
-            numeroContrat: contract.numeroContrat,
-            companyName: contract.company.name,
-            cgvVersion: contract.cgvVersion,
-            dateDebut: contract.dateDebut,
-            signedAt: contract.signedAt,
-            cgvContenu: contract.cgv.contenu,
-            signatureDataUrl: signatureDataUrl || null,
+    const document = React.createElement(ContratPDF as React.ComponentType<any>, {
+        company: {
+            name: contract.company.name,
         },
     })
 

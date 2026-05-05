@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Users, UserPlus, Search, MoreHorizontal, Pencil, Trash2, X, Clock } from "lucide-react"
+import { Users, UserPlus, Search, MoreHorizontal, Pencil, Trash2, X, Clock, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,6 +27,7 @@ interface SalarieItem {
     poste: string
     uniteTravail: string
     dateEntree: string
+    dateSortie: string | null
     typeContrat: string
     isActive: boolean
     email: string | null
@@ -67,10 +68,10 @@ function StatCard({ icon: Icon, count, label, color }: { icon: React.ElementType
 }
 
 const EMPTY_FORM = {
-    nom: "", prenom: "", poste: "", uniteTravail: "", dateEntree: "", typeContrat: "CDI", email: "", telephone: "",
+    nom: "", prenom: "", poste: "", uniteTravail: "", dateEntree: "", dateSortie: "", typeContrat: "CDI", email: "", telephone: "",
 }
 
-export function SalariesClientDashboard({ salaries }: { salaries: SalarieItem[] }) {
+export function SalariesClientDashboard({ salaries, companyId }: { salaries: SalarieItem[], companyId?: string | null }) {
     const router = useRouter()
     const [search, setSearch] = useState("")
     const [showModal, setShowModal] = useState(false)
@@ -104,6 +105,7 @@ export function SalariesClientDashboard({ salaries }: { salaries: SalarieItem[] 
             poste: s.poste,
             uniteTravail: s.uniteTravail,
             dateEntree: s.dateEntree.split("T")[0],
+            dateSortie: s.dateSortie ? s.dateSortie.split("T")[0] : "",
             typeContrat: s.typeContrat,
             email: s.email || "",
             telephone: s.telephone || "",
@@ -116,9 +118,15 @@ export function SalariesClientDashboard({ salaries }: { salaries: SalarieItem[] 
         setLoading(true)
         try {
             if (editingId) {
-                await updateSalarie(editingId, form)
+                await updateSalarie(editingId, {
+                    ...form,
+                    dateSortie: form.dateSortie || undefined,
+                })
             } else {
-                await createSalarie(form)
+                await createSalarie({
+                    ...form,
+                    dateSortie: form.dateSortie || undefined,
+                })
             }
             setShowModal(false)
             router.refresh()
@@ -145,10 +153,24 @@ export function SalariesClientDashboard({ salaries }: { salaries: SalarieItem[] 
                     <h1 className="text-2xl font-semibold text-slate-900">Mes salariés</h1>
                     <p className="text-slate-500 text-sm mt-0.5">Gérez la liste de vos salariés</p>
                 </div>
-                <Button onClick={openAdd} className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Ajouter un salarié
-                </Button>
+                <div className="flex items-center gap-2">
+                    {companyId && (
+                        <a
+                            href={`/api/companies/${companyId}/registre-personnel`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <Button variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-50">
+                                <Download className="h-4 w-4 mr-2" />
+                                Registre du Personnel
+                            </Button>
+                        </a>
+                    )}
+                    <Button onClick={openAdd} className="bg-blue-600 hover:bg-blue-700 text-white">
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Ajouter un salarié
+                    </Button>
+                </div>
             </div>
 
             <div className="p-6">
@@ -264,9 +286,15 @@ export function SalariesClientDashboard({ salaries }: { salaries: SalarieItem[] 
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <Label>Date d'entrée *</Label>
+                                    <Label>Date d&apos;entrée *</Label>
                                     <Input type="date" value={form.dateEntree} onChange={e => setForm({ ...form, dateEntree: e.target.value })} className="mt-1" />
                                 </div>
+                                <div>
+                                    <Label>Date de sortie <span className="text-slate-400 text-xs font-normal">(si départ)</span></Label>
+                                    <Input type="date" value={form.dateSortie} onChange={e => setForm({ ...form, dateSortie: e.target.value })} className="mt-1" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <Label>Type de contrat *</Label>
                                     <Select value={form.typeContrat} onValueChange={v => setForm({ ...form, typeContrat: v })}>

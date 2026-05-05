@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, FileText, FileSignature, Settings, Layers, PanelLeftClose, PanelLeft, Building2, Users, ClipboardCheck, FileBarChart, MonitorPlay, AlertCircle, CreditCard, Briefcase, Scale, BookOpen, Menu, X } from "lucide-react"
+import { LayoutDashboard, FileText, FileSignature, Settings, Layers, PanelLeftClose, PanelLeft, Building2, Users, ClipboardCheck, FileBarChart, MonitorPlay, AlertCircle, CreditCard, Briefcase, Scale, BookOpen, Menu, X, FolderOpen } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -19,6 +19,7 @@ const navigation = [
     { name: "Audits", href: "/admin/audits", icon: ClipboardCheck },
     { name: "DUERP", href: "/admin/duerp", icon: FileBarChart },
     { name: "Affichages", href: "/admin/affichages", icon: MonitorPlay },
+    { name: "Classeur", href: "/admin/classeur", icon: FolderOpen },
     { name: "Signalements", href: "/admin/signalements", icon: AlertCircle },
     { name: "Rapports", href: "/admin/rapports", icon: BookOpen },
     { name: "Abonnements", href: "/admin/abonnements", icon: CreditCard },

@@ -36,8 +36,8 @@ export async function GET(
         },
     })
 
-    if (!payment || !payment.receiptNumber) {
-        return NextResponse.json({ error: "Ticket introuvable" }, { status: 404 })
+    if (!payment) {
+        return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 })
     }
 
     const canAccess =
@@ -50,9 +50,11 @@ export async function GET(
         return NextResponse.json({ error: "Accès refusé" }, { status: 403 })
     }
 
+    const receiptRef = payment.receiptNumber || `ICPP-${payment.id.slice(0, 8).toUpperCase()}`
+
     const document = React.createElement(PaymentReceiptDocument as React.ComponentType<any>, {
         data: {
-            receiptNumber: payment.receiptNumber,
+            receiptNumber: receiptRef,
             companyName: payment.company.name,
             clientName: payment.clientUser.name || payment.clientUser.email || "Client ICPP",
             method: payment.method,
@@ -72,7 +74,7 @@ export async function GET(
     return new NextResponse(pdfBytes, {
         headers: {
             "Content-Type": "application/pdf",
-            "Content-Disposition": `inline; filename="ticket-${payment.receiptNumber}.pdf"`,
+        "Content-Disposition": `attachment; filename="facture-${receiptRef}.pdf"`,
         },
     })
 }

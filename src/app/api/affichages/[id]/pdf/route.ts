@@ -3,11 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { renderToBuffer } from "@react-pdf/renderer"
 import React from "react"
-import { Fiche1Coordonnees } from "@/lib/pdf/affichage-fiche1"
-import type { Fiche1Data } from "@/lib/pdf/affichage-fiche1"
-import { Fiche2DroitsObligations } from "@/lib/pdf/affichage-fiche2"
-import { Fiche3InterdictionFumer } from "@/lib/pdf/affichage-fiche3"
-import { Fiche4ConsignesIncendie } from "@/lib/pdf/affichage-fiche4"
+
 
 export async function GET(
     request: NextRequest,
@@ -40,44 +36,70 @@ export async function GET(
             employeeCount: affichage.company.employeeCount,
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let element: any
-
-        switch (affichage.category) {
-            case "FICHE_1": {
-                let dynamicData: Fiche1Data = {}
-                try {
-                    dynamicData = JSON.parse(affichage.dynamicData || "{}")
-                } catch {
-                    dynamicData = {}
-                }
-                element = React.createElement(Fiche1Coordonnees, { company, data: dynamicData })
-                break
-            }
-            case "FICHE_2":
-                element = React.createElement(Fiche2DroitsObligations, {
-                    company: { name: company.name },
-                    version: affichage.version,
-                })
-                break
-            case "FICHE_3":
-                element = React.createElement(Fiche3InterdictionFumer, {
-                    company: { name: company.name },
-                })
-                break
-            case "FICHE_4":
-                element = React.createElement(Fiche4ConsignesIncendie, {
-                    company: { name: company.name },
-                })
-                break
-            default:
-                return NextResponse.json(
-                    { error: `Catégorie d'affichage non supportée: ${affichage.category}` },
-                    { status: 400 }
-                )
+        let dynamicData: any = {}
+        try {
+            dynamicData = JSON.parse(affichage.dynamicData || "{}")
+        } catch {
+            dynamicData = {}
+        }
+        
+        // Mappage complet vers le format AffichageA4
+        const a4Data = {
+            company,
+            inspection: {
+                inspecteur: dynamicData.inspectionNom || "",
+                adresse: dynamicData.inspectionAdresse || "",
+                telephone: dynamicData.inspectionTelephone || "",
+                horaires: dynamicData.inspectionHoraires || "",
+            },
+            medecine: {
+                service: dynamicData.medecineNom || "",
+                adresse: dynamicData.medecineAdresse || "",
+                telephone: dynamicData.medecineTelephone || "",
+                medecinReferent: dynamicData.medecinMedecin || "",
+            },
+            referent: {
+                nom: dynamicData.referentNom || "",
+                telephone: dynamicData.referentTelephone || "",
+            },
+            convention: {
+                intitule: dynamicData.conventionIntitule || "",
+                idcc: dynamicData.conventionIdcc || "",
+                lieuConsultation: dynamicData.lieuConsultation || "Sur demande",
+            },
+            organisation: {
+                LUNDI:     { matin: dynamicData.horairesLundi     || "", apresMidi: "" },
+                MARDI:     { matin: dynamicData.horairesMardi     || "", apresMidi: "" },
+                MERCREDI:  { matin: dynamicData.horairesMercredi  || "", apresMidi: "" },
+                JEUDI:     { matin: dynamicData.horairesJeudi     || "", apresMidi: "" },
+                VENDREDI:  { matin: dynamicData.horairesVendredi  || "", apresMidi: "" },
+                SAMEDI:    { matin: dynamicData.horairesSamedi    || "", apresMidi: "" },
+                DIMANCHE:  { matin: dynamicData.horairesDimanche  || "Fermé", apresMidi: "" },
+            },
+            horaires: {
+                tempsPause: dynamicData.tempsPause  || "",
+                matin:      dynamicData.horaireMatin     || "",
+                apresMidi:  dynamicData.horaireApresMidi || "",
+            },
+            conges: {
+                consultableAupresDe: dynamicData.conges || "Direction / RH",
+            },
+            duerp: {
+                lieuConsultation: dynamicData.duerp_lieu  || "Direction",
+                acces:            dynamicData.duerp_acces || "Sur demande",
+            },
+            urgences: {
+                samu:     dynamicData.urgenceSamu     || "15",
+                police:   dynamicData.urgencePolice   || "17",
+                pompiers: dynamicData.urgencePompiers || "18",
+            },
+            horairesCollectifs: dynamicData.horairesCollectifs || "",
         }
 
-        const pdfBuffer: Buffer = await renderToBuffer(element)
+        const { AffichageObligatoireA4 } = await import("@/lib/pdf/affichage-a4")
+        const element = React.createElement(AffichageObligatoireA4, { data: a4Data })
+
+        const pdfBuffer: Buffer = await renderToBuffer(element as any)
 
         await prisma.affichage.update({
             where: { id },
@@ -85,9 +107,8 @@ export async function GET(
         })
 
         const body = new Uint8Array(pdfBuffer)
-        const slug = affichage.category.replace(/_/g, "")
         const companySlug = company.name.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 25)
-        const filename = `Affichage_${slug}_${companySlug}.pdf`
+        const filename = `Affichages_Obligatoires_${companySlug}.pdf`
 
         return new Response(body, {
             headers: {

@@ -93,7 +93,7 @@ export async function getFacturesPageData(): Promise<FacturesPageData | null> {
                     currency: inv.currency.toUpperCase(),
                     status: inv.status ?? "unknown",
                     description: inv.description ?? "Abonnement ICPP Conformité",
-                    pdfUrl: inv.invoice_pdf ?? null,
+                    pdfUrl: `/api/factures/${inv.id}/download`,
                     hostedUrl: inv.hosted_invoice_url ?? null,
                 }))
 
@@ -136,7 +136,7 @@ export async function getFacturesPageData(): Promise<FacturesPageData | null> {
         currency: p.currency,
         status: "paid",
         description: `Abonnement ${p.planCode || "ICPP"}`,
-        pdfUrl: p.receiptNumber ? `/api/payments/${p.id}/receipt` : null,
+        pdfUrl: `/api/payments/${p.id}/receipt`,
         hostedUrl: null,
     }))
 

@@ -124,6 +124,7 @@ async function getClientDashboardData() {
         companyName: company.name,
         complianceScore: score,
         complianceLevel: score >= 85 ? "Excellent" : score >= 70 ? "Bon" : "À améliorer",
+        hasCoreCompliance,
         duerp: {
             status: hasSignedDuerp ? "À jour" : activeDuerp ? "En cours" : "Non créé",
             version: activeDuerp ? `Version ${activeDuerp.version}.0` : "N/A"
@@ -287,8 +288,8 @@ export default async function ClientDashboard() {
                             </div>
                         </div>
 
-                        {/* Abonnement - Fond bleu cyan */}
-                        <div className="rounded-2xl bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-100 p-5 hover:border-cyan-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+                        {/* Abonnement - Fond bleu cyan - Cliquable → factures */}
+                        <Link href="/dashboard/factures" className="rounded-2xl bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-100 p-5 hover:border-cyan-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group block">
                             <div className="flex items-start justify-between">
                                 <div className="min-w-0">
                                     <p className="text-sm font-medium text-slate-500">Abonnement</p>
@@ -302,12 +303,15 @@ export default async function ClientDashboard() {
                                             Fin : {format(new Date(data.subscriptionEnd), "dd/MM/yy", { locale: fr })}
                                         </p>
                                     )}
+                                    <p className="text-[10px] text-cyan-500 mt-2 flex items-center gap-1 group-hover:underline">
+                                        Voir mes factures &rarr;
+                                    </p>
                                 </div>
                                 <div className="h-10 w-10 rounded-lg bg-cyan-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-all duration-300 shadow-sm">
                                     <CreditCard className="h-5 w-5 text-cyan-600" />
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                     </div>
 
                     {/* LIGNE 2: Layout principal en 2 colonnes */}
@@ -324,8 +328,12 @@ export default async function ClientDashboard() {
 
                                         <div className="relative">
                                             <div className="mb-4 flex items-center justify-end">
-                                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${isSuspended ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                                    {isSuspended ? "Suspendu" : "Conforme"}
+                                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                                                    isSuspended ? "bg-rose-100 text-rose-700" :
+                                                    !data.hasCoreCompliance ? "bg-amber-100 text-amber-700" :
+                                                    "bg-emerald-100 text-emerald-700"
+                                                }`}>
+                                                    {isSuspended ? "Suspendu" : !data.hasCoreCompliance ? "À mettre à jour" : "Conforme"}
                                                 </span>
                                             </div>
 

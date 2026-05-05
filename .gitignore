@@ -43,3 +43,4 @@ Thumbs.db
 # Autres fichiers temporaires
 temp_check/
 tmp/
+coverage/

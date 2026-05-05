@@ -103,6 +103,11 @@ export async function GET(
                 mesuresAppliquees: mesures,
                 observations: ev.observations || undefined,
                 commentaires: ev.commentaires || undefined,
+                actionCorrective: ev.actionCorrective || undefined,
+                responsable: ev.responsable || undefined,
+                delai: ev.delai || undefined,
+                prioriteAction: ev.prioriteAction || undefined,
+                niveauMaitrise: ev.niveauMaitrise || undefined,
             }
         })
 
@@ -148,6 +153,8 @@ export async function GET(
             updatedAt: duerp.updatedAt || undefined,
             nextReviewDate: duerp.nextReviewDate || undefined,
             evaluations,
+            accidentHistory,
+            unitesTravail,
             auditorName: duerp.company.auditor?.name || undefined,
         }
 

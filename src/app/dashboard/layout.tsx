@@ -64,12 +64,18 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     // Expired/suspended but already-subscribed clients can enter dashboard in read-only locked mode.
     const isSuspended = !hasActiveSubscription && setupFeePaid
 
-    const navItems = isSuspended
-        ? [
-            { href: "/dashboard", label: "Tableau de bord", iconName: "LayoutDashboard" },
-            { href: "/abonnement", label: "Réabonnement", iconName: "CreditCard" },
-        ]
-        : fullNavItems
+    // Routes accessible in read-only mode when subscription is suspended.
+    // These give the client access to their document history without any
+    // write-capable features.
+    const suspendedNavItems = [
+        { href: "/dashboard",           label: "Tableau de bord", iconName: "LayoutDashboard" },
+        { href: "/dashboard/factures",  label: "Mes factures",    iconName: "Receipt"         },
+        { href: "/dashboard/documents", label: "Documents",       iconName: "FolderOpen"      },
+        { href: "/dashboard/contrat",   label: "Mon contrat",     iconName: "FileText"        },
+        { href: "/abonnement",          label: "Réabonnement",    iconName: "CreditCard"      },
+    ]
+
+    const navItems = isSuspended ? suspendedNavItems : fullNavItems
 
     return (
         <DashboardLayoutShell

@@ -21,6 +21,7 @@ export function ContratSignatureClient({ contract }: { contract: ContractData })
     const [signature, setSignature] = useState<string | null>(contract.signatureDraft)
     const [message, setMessage] = useState<string | null>(null)
     const [isPending, startTransition] = useTransition()
+    const [cgvOpen, setCgvOpen] = useState(false)
 
     const signed = useMemo(() => !!contract.signedAt, [contract.signedAt])
 
@@ -87,10 +88,27 @@ export function ContratSignatureClient({ contract }: { contract: ContractData })
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900">Conditions contractuelles (CGV v{contract.cgvVersion})</h2>
-                <div className="mt-4 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700 whitespace-pre-wrap">
-                    {contract.cgvContenu}
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-slate-900">Conditions contractuelles (CGV v{contract.cgvVersion})</h2>
+                    <button
+                        type="button"
+                        onClick={() => setCgvOpen(!cgvOpen)}
+                        className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                        {cgvOpen ? "Masquer" : "Lire les CGV"}
+                        <span className="text-xs">{cgvOpen ? "▲" : "▼"}</span>
+                    </button>
                 </div>
+                {cgvOpen && (
+                    <div className="mt-4 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700 whitespace-pre-wrap">
+                        {contract.cgvContenu}
+                    </div>
+                )}
+                {!cgvOpen && (
+                    <p className="mt-2 text-sm text-slate-500 italic">
+                        Cliquez sur &quot;Lire les CGV&quot; pour consulter les conditions contractuelles complètes.
+                    </p>
+                )}
             </section>
 
             {!signed && (

@@ -55,6 +55,10 @@ interface DashboardLayoutShellProps {
 export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, children, isSuspended }: DashboardLayoutShellProps) {
     const pathname = usePathname()
     const [collapsed, setCollapsed] = useState(false)
+
+    // Routes that suspended clients may still access in read-only mode.
+    const HISTORY_ROUTES = ["/dashboard/factures", "/dashboard/documents", "/dashboard/contrat"]
+    const isHistoryRoute = HISTORY_ROUTES.some(r => pathname?.startsWith(r))
     const [mobileOpen, setMobileOpen] = useState(false)
 
     const getInitials = (name: string) => {
@@ -223,15 +227,16 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
                                     <p className="text-sm text-slate-600">{Math.round(planPrice / 100)}€/mois</p>
                                 </div>
                             </div>
-                            <button
+                            <Link
+                                href="/dashboard/factures"
                                 className={cn(
-                                    "w-full text-white font-medium rounded-xl py-2.5 text-sm transition-opacity hover:opacity-90",
+                                    "block w-full text-center text-white font-medium rounded-xl py-2.5 text-sm transition-opacity hover:opacity-90",
                                     isSuspended ? "bg-red-600" : ""
                                 )}
                                 style={!isSuspended ? { background: 'linear-gradient(135deg, #244DC3 0%, #4B8EF2 100%)' } : {}}
                             >
                                 {isSuspended ? "Abonnement suspendu" : "Voir mon abonnement"}
-                            </button>
+                            </Link>
                         </div>
                     ) : (
                         <div className="mb-3 flex justify-center">
@@ -284,31 +289,57 @@ export function DashboardLayoutShell({ userName, userPlan, planPrice, navItems, 
             {/* Main Content */}
             <main className="relative flex-1 min-w-0 h-screen overflow-y-auto bg-slate-50 pt-14 lg:pt-0">
                 {isSuspended && (
-                    <div className="bg-red-50 border-b border-red-200 p-4 sticky top-0 z-50">
-                        <div className="max-w-7xl mx-auto flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-red-100 p-2 rounded-full">
-                                    <span className="text-red-600 font-bold">!</span>
+                    <div className={cn(
+                        "border-b p-4 sticky top-0 z-50",
+                        isHistoryRoute
+                            ? "bg-amber-50 border-amber-200"
+                            : "bg-red-50 border-red-200"
+                    )}>
+                        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className={cn(
+                                    "p-2 rounded-full flex-shrink-0",
+                                    isHistoryRoute ? "bg-amber-100" : "bg-red-100"
+                                )}>
+                                    <span className={cn(
+                                        "font-bold text-sm",
+                                        isHistoryRoute ? "text-amber-600" : "text-red-600"
+                                    )}>!</span>
                                 </div>
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                                    <div>
-                                        <h3 className="text-red-800 font-medium">Votre abonnement est suspendu</h3>
-                                        <p className="text-red-600 text-sm">Veuillez régulariser votre situation pour retrouver un accès complet.</p>
-                                    </div>
-                                    <Link
-                                        href="/abonnement"
-                                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 transition-colors"
-                                    >
-                                        Se réabonner
-                                    </Link>
+                                <div className="min-w-0">
+                                    {isHistoryRoute ? (
+                                        <>
+                                            <h3 className="text-amber-800 font-semibold text-sm">Mode Lecture Seule</h3>
+                                            <p className="text-amber-700 text-xs">Vous consultez vos documents archivés. Régularisez votre abonnement pour accéder à toutes les fonctionnalités.</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h3 className="text-red-800 font-semibold text-sm">Votre abonnement est suspendu</h3>
+                                            <p className="text-red-600 text-xs">Veuillez régulariser votre situation pour retrouver un accès complet.</p>
+                                        </>
+                                    )}
                                 </div>
                             </div>
+                            <Link
+                                href="/abonnement"
+                                className={cn(
+                                    "flex-shrink-0 inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md shadow-sm text-white transition-colors",
+                                    isHistoryRoute
+                                        ? "bg-amber-600 hover:bg-amber-700"
+                                        : "bg-red-600 hover:bg-red-700"
+                                )}
+                            >
+                                Se réabonner
+                            </Link>
                         </div>
                     </div>
                 )}
                 <div className={cn(
                     "min-h-full",
-                    isSuspended ? "pointer-events-none opacity-50 contrast-50 grayscale select-none" : ""
+                    // Lock interactions only on non-history pages when suspended
+                    isSuspended && !isHistoryRoute
+                        ? "pointer-events-none opacity-50 contrast-50 grayscale select-none"
+                        : ""
                 )}>
                     {children}
                 </div>

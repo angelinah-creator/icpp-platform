@@ -1,3 +1,5 @@
+import fs from "fs"
+import path from "path"
 import {
     Document,
     Page,
@@ -5,129 +7,214 @@ import {
     View,
     StyleSheet,
     Font,
+    Image,
 } from "@react-pdf/renderer"
+
+// ─── Font Registration ────────────────────────────────────────────────────────
+// React-PDF natively supports Helvetica and Helvetica-Bold.
+// We don't need to load external fonts unless requested.
+
+// ─── Image Loader Cache ───────────────────────────────────────────────────────
+const imgCache: Record<string, string> = {}
+
+function img(relPath: string): string {
+    if (imgCache[relPath]) return imgCache[relPath]
+
+    const bases = [process.cwd(), "/app", "/opt/icpp-platform"]
+    for (const base of bases) {
+        const fullPath = path.join(base, "public/assets/attestation", relPath)
+        try {
+            if (fs.existsSync(fullPath)) {
+                const buf = fs.readFileSync(fullPath)
+                const ext = path.extname(fullPath).toLowerCase()
+                const mime = ext === ".png" ? "image/png" : "image/jpeg"
+                const b64 = buf.toString("base64")
+                const dataUrl = `data:${mime};base64,${b64}`
+                imgCache[relPath] = dataUrl
+                return dataUrl
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+    return ""
+}
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
     page: {
         backgroundColor: "#FFFFFF",
-        padding: 40,
         fontFamily: "Helvetica",
-        fontSize: 10,
         color: "#1e293b",
+        padding: 0,
+        position: "relative",
     },
-    // Header
-    header: {
+    // Top Bar (Style_header)
+    styleHeader: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 12,
+        width: "100%",
+        objectFit: "cover",
+    },
+    // Content wrapper
+    container: {
+        paddingTop: 50,
+        paddingHorizontal: 55,
+        paddingBottom: 60,
+        flex: 1,
+    },
+    // Header section
+    headerFlex: {
         flexDirection: "row",
         justifyContent: "space-between",
-        alignItems: "flex-start",
-        marginBottom: 28,
-        paddingBottom: 18,
-        borderBottomWidth: 2,
-        borderBottomColor: "#2048BF",
-    },
-    headerLeft: { flex: 1 },
-    headerRight: {
-        backgroundColor: "#EFF4FF",
-        borderRadius: 6,
-        padding: 10,
-        minWidth: 160,
         alignItems: "center",
+        marginBottom: 60,
     },
-    brandName: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#2048BF", letterSpacing: 1 },
-    brandSub: { fontSize: 7, color: "#64748b", marginTop: 2, letterSpacing: 0.5 },
-    badgeText: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#2048BF", textAlign: "center" },
-    badgeDate: { fontSize: 9, color: "#1e293b", marginTop: 4, fontFamily: "Helvetica-Bold", textAlign: "center" },
+    logo: {
+        width: 200,
+        height: 40,
+        objectFit: "contain",
+    },
+    headerRight: {
+        alignItems: "flex-start",
+        maxWidth: 200,
+    },
+    headerCompany: {
+        fontSize: 11,
+        fontFamily: "Helvetica-Bold",
+        color: "#0f172a",
+        marginBottom: 3,
+    },
+    headerActivity: {
+        fontSize: 10,
+        color: "#475569",
+    },
 
     // Title
-    titleBlock: { alignItems: "center", marginBottom: 24 },
-    titleLine: { backgroundColor: "#2048BF", height: 3, width: 60, marginBottom: 10 },
-    title: { fontSize: 20, fontFamily: "Helvetica-Bold", color: "#2048BF", textAlign: "center", letterSpacing: 0.5 },
-    subtitle: { fontSize: 10, color: "#64748b", marginTop: 4, textAlign: "center" },
+    title: {
+        fontSize: 22,
+        fontFamily: "Helvetica-Bold",
+        color: "#031F5C", // Deep dark blue
+        textAlign: "center",
+        marginBottom: 50,
+        letterSpacing: 0.5,
+    },
 
-    // Company box
-    companyBox: {
-        backgroundColor: "#F8FAFF",
-        borderWidth: 1,
-        borderColor: "#c7d7f5",
-        borderRadius: 8,
-        padding: 16,
+    // Introduction block
+    introText: {
+        fontSize: 11,
+        color: "#475569",
+        marginBottom: 8,
+    },
+    introCompany: {
+        fontSize: 14,
+        fontFamily: "Helvetica-Bold",
+        color: "#0f172a",
+        marginBottom: 30,
+    },
+    paragraph: {
+        fontSize: 11,
+        color: "#475569",
+        lineHeight: 1.6,
         marginBottom: 20,
     },
-    companyTitle: { fontSize: 9, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 },
-    row: { flexDirection: "row", marginBottom: 5 },
-    label: { fontSize: 9, color: "#64748b", width: 140 },
-    value: { fontSize: 9, fontFamily: "Helvetica-Bold", color: "#1e293b", flex: 1 },
-
-    // Attestation text
-    attestBlock: {
-        backgroundColor: "#F0F7FF",
-        borderLeftWidth: 3,
-        borderLeftColor: "#2048BF",
-        padding: 14,
-        marginBottom: 20,
-        borderRadius: 4,
+    boldDark: {
+        fontFamily: "Helvetica-Bold",
+        color: "#0f172a",
     },
-    attestText: { fontSize: 10, lineHeight: 1.7, color: "#1e293b" },
-    attestBold: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#2048BF" },
 
-    // Points de conformité
-    sectionTitle: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#2048BF", marginBottom: 10, marginTop: 4 },
-    checkItem: { flexDirection: "row", alignItems: "flex-start", marginBottom: 7 },
-    checkIcon: {
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        backgroundColor: "#16a34a",
+    // Accompagnement
+    listTitle: {
+        fontSize: 11,
+        fontFamily: "Helvetica-Bold",
+        color: "#475569",
+        marginBottom: 10,
+    },
+    listItem: {
+        flexDirection: "row",
+        marginBottom: 6,
+        paddingLeft: 10,
+    },
+    bullet: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: "#475569",
+        marginTop: 5,
         marginRight: 8,
-        marginTop: 1,
-        alignItems: "center",
-        justifyContent: "center",
     },
-    checkIconText: { color: "#FFFFFF", fontSize: 8, fontFamily: "Helvetica-Bold" },
-    checkText: { fontSize: 9, color: "#1e293b", flex: 1, lineHeight: 1.5 },
+    listText: {
+        fontSize: 11,
+        color: "#475569",
+        lineHeight: 1.4,
+        flex: 1,
+    },
 
-    // Signature block
-    sigBlock: {
-        borderWidth: 1,
-        borderColor: "#e2e8f0",
-        borderRadius: 8,
-        padding: 16,
-        marginTop: 20,
-        marginBottom: 16,
-        backgroundColor: "#FAFAFA",
+    // Dates
+    datesBlock: {
+        marginTop: 35,
+        marginBottom: 35,
     },
-    sigTitle: { fontSize: 9, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 },
-    sigRow: { flexDirection: "row", gap: 16 },
-    sigItem: { flex: 1 },
-    sigLabel: { fontSize: 8, color: "#94a3b8", marginBottom: 3 },
-    sigValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: "#1e293b" },
-    sigLine: { borderBottomWidth: 1, borderBottomColor: "#cbd5e1", marginTop: 6, paddingTop: 6 },
+    dateLine: {
+        fontSize: 11,
+        color: "#475569",
+        marginBottom: 4,
+    },
+
+    // Fait pour servir
+    faitPourServir: {
+        fontSize: 12,
+        fontFamily: "Helvetica-Bold",
+        color: "#475569",
+        marginBottom: 20,
+    },
+
+    // Signature Block
+    signatureContainer: {
+        marginTop: 10,
+        marginLeft: 40,
+        width: 180,
+    },
+    signatureImage: {
+        width: 80,
+        height: 50,
+        objectFit: "contain",
+        marginBottom: 10,
+    },
+    titulaireImage: {
+        width: 140,
+        height: 30,
+        objectFit: "contain",
+    },
 
     // Footer
-    footer: {
+    footerBlock: {
         position: "absolute",
-        bottom: 24,
-        left: 40,
-        right: 40,
+        bottom: 40,
+        left: 55,
+        right: 55,
         flexDirection: "row",
+        flexWrap: "wrap",
         justifyContent: "space-between",
-        borderTopWidth: 1,
-        borderTopColor: "#e2e8f0",
-        paddingTop: 8,
     },
-    footerText: { fontSize: 7, color: "#94a3b8" },
-
-    // Ref badge
-    refBadge: {
-        backgroundColor: "#2048BF",
-        borderRadius: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        alignSelf: "flex-start",
-        marginBottom: 16,
+    footerColumn: {
+        flexDirection: "row",
+        marginBottom: 4,
     },
-    refText: { fontSize: 7, color: "#FFFFFF", fontFamily: "Helvetica-Bold", letterSpacing: 0.5 },
+    footerLabel: {
+        fontSize: 8,
+        fontFamily: "Helvetica-Bold",
+        color: "#0f172a",
+        width: 60,
+    },
+    footerValue: {
+        fontSize: 8,
+        color: "#475569",
+        width: 140,
+    },
 })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -158,8 +245,6 @@ interface AttestationConformiteProps {
 export function AttestationConformitePDF({
     company,
     duerp,
-    signer,
-    generatedAt = new Date(),
 }: AttestationConformiteProps) {
     const formatDate = (d: string | Date) =>
         new Date(d).toLocaleDateString("fr-FR", {
@@ -168,138 +253,99 @@ export function AttestationConformitePDF({
             year: "numeric",
         })
 
-    const refNum = `ATT-CONF-${company.siret?.slice(-6) || "ICPP"}-v${duerp.version}-${new Date(duerp.signedAt).getFullYear()}`
+    const startDate = formatDate(duerp.signedAt)
 
     return (
-        <Document title={`Attestation de Conformité - ${company.name}`}>
+        <Document title={`Attestation d'accompagnement - ${company.name}`}>
             <Page size="A4" style={s.page}>
-                {/* Header */}
-                <View style={s.header}>
-                    <View style={s.headerLeft}>
-                        <Text style={s.brandName}>ICPP</Text>
-                        <Text style={s.brandSub}>Institut de Conformité et de Prévention Professionnelle</Text>
+                {/* Bandeau haut (Style_header) */}
+                <Image src={img("Style_header.png")} style={s.styleHeader} />
+
+                <View style={s.container}>
+                    {/* En-tête (Logo + Raison sociale) */}
+                    <View style={s.headerFlex}>
+                        <Image src={img("Header.png")} style={s.logo} />
+                        <View style={s.headerRight}>
+                            <Text style={s.headerCompany}>{company.name}</Text>
+                            {company.metier && <Text style={s.headerActivity}>{company.metier}</Text>}
+                        </View>
                     </View>
-                    <View style={s.headerRight}>
-                        <Text style={s.badgeText}>DATE D&apos;ÉMISSION</Text>
-                        <Text style={s.badgeDate}>{formatDate(generatedAt)}</Text>
-                    </View>
-                </View>
 
-                {/* Référence */}
-                <View style={s.refBadge}>
-                    <Text style={s.refText}>Réf. : {refNum}</Text>
-                </View>
+                    {/* Titre Principal */}
+                    <Text style={s.title}>Attestation d&apos;accompagnement</Text>
 
-                {/* Titre */}
-                <View style={s.titleBlock}>
-                    <View style={s.titleLine} />
-                    <Text style={s.title}>ATTESTATION DE CONFORMITÉ</Text>
-                    <Text style={s.subtitle}>Document Unique d&apos;Évaluation des Risques Professionnels</Text>
-                </View>
+                    {/* Introduction */}
+                    <Text style={s.introText}>Nous attestons que l&apos;entreprise</Text>
+                    <Text style={s.introCompany}>{company.name}</Text>
 
-                {/* Entreprise */}
-                <View style={s.companyBox}>
-                    <Text style={s.companyTitle}>Entreprise concernée</Text>
-                    <View style={s.row}>
-                        <Text style={s.label}>Raison sociale :</Text>
-                        <Text style={s.value}>{company.name}</Text>
-                    </View>
-                    {company.siret && (
-                        <View style={s.row}>
-                            <Text style={s.label}>SIRET :</Text>
-                            <Text style={s.value}>{company.siret}</Text>
-                        </View>
-                    )}
-                    {(company.address || company.city) && (
-                        <View style={s.row}>
-                            <Text style={s.label}>Adresse :</Text>
-                            <Text style={s.value}>
-                                {[company.address, company.postalCode, company.city].filter(Boolean).join(", ")}
-                            </Text>
-                        </View>
-                    )}
-                    {company.metier && (
-                        <View style={s.row}>
-                            <Text style={s.label}>Activité / Métier :</Text>
-                            <Text style={s.value}>{company.metier}</Text>
-                        </View>
-                    )}
-                    {company.employeeCount !== undefined && (
-                        <View style={s.row}>
-                            <Text style={s.label}>Effectif :</Text>
-                            <Text style={s.value}>{company.employeeCount} salarié{company.employeeCount > 1 ? "s" : ""}</Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* Texte d'attestation */}
-                <View style={s.attestBlock}>
-                    <Text style={s.attestText}>
-                        L&apos;Institut de Conformité et de Prévention Professionnelle (<Text style={s.attestBold}>ICPP</Text>) atteste par la présente que l&apos;entreprise{" "}
-                        <Text style={s.attestBold}>{company.name}</Text> dispose d&apos;un{" "}
-                        <Text style={s.attestBold}>Document Unique d&apos;Évaluation des Risques Professionnels (DUERP) version {duerp.version}</Text>,
-                        établi conformément aux articles <Text style={s.attestBold}>L.4121-1 à L.4121-3</Text> et{" "}
-                        <Text style={s.attestBold}>R.4121-1 à R.4121-4</Text> du Code du Travail.{"\n\n"}
-                        Ce document a été signé électroniquement le{" "}
-                        <Text style={s.attestBold}>{formatDate(duerp.signedAt)}</Text> et est valide jusqu&apos;au{" "}
-                        <Text style={s.attestBold}>
-                            {duerp.nextReviewDate ? formatDate(duerp.nextReviewDate) : "Non définie"}
-                        </Text>.
+                    <Text style={s.paragraph}>
+                        est <Text style={s.boldDark}>accompagnée par ICPP Conformité</Text> dans le cadre de{" "}
+                        <Text style={s.boldDark}>ses obligations réglementaires en matière de santé, sécurité et prévention des risques professionnels</Text>, 
+                        conformément aux dispositions du Code du travail.
                     </Text>
-                </View>
 
-                {/* Points de conformité */}
-                <Text style={s.sectionTitle}>Points de conformité vérifiés</Text>
-
-                {[
-                    "Document Unique d'Évaluation des Risques Professionnels (DUERP) créé et signé",
-                    `DUERP version ${duerp.version} — conforme au décret n°2001-1016 du 5 novembre 2001`,
-                    "Évaluation des risques par Unité de Travail réalisée",
-                    "Plan d'actions préventives intégré au document",
-                    "Prochaine révision planifiée conformément à l'obligation annuelle",
-                ].map((item, i) => (
-                    <View key={i} style={s.checkItem}>
-                        <View style={s.checkIcon}>
-                            <Text style={s.checkIconText}>✓</Text>
-                        </View>
-                        <Text style={s.checkText}>{item}</Text>
+                    {/* Liste d'accompagnement */}
+                    <Text style={s.listTitle}>Cet accompagnement comprend notamment :</Text>
+                    
+                    <View style={s.listItem}>
+                        <View style={s.bullet} />
+                        <Text style={s.listText}>la réalisation et la mise à jour du Document Unique d&apos;Évaluation des Risques Professionnels (DUERP),</Text>
                     </View>
-                ))}
+                    <View style={s.listItem}>
+                        <View style={s.bullet} />
+                        <Text style={s.listText}>le suivi annuel de conformité,</Text>
+                    </View>
+                    <View style={s.listItem}>
+                        <View style={s.bullet} />
+                        <Text style={s.listText}>l&apos;assistance en cas de modification de situation,</Text>
+                    </View>
+                    <View style={s.listItem}>
+                        <View style={s.bullet} />
+                        <Text style={s.listText}>la mise à disposition des affichages obligatoires réglementaires,</Text>
+                    </View>
+                    <View style={s.listItem}>
+                        <View style={s.bullet} />
+                        <Text style={s.listText}>un accompagnement continu en prévention.</Text>
+                    </View>
 
-                {/* Signature ICPP */}
-                <View style={s.sigBlock}>
-                    <Text style={s.sigTitle}>Validation et Signature ICPP</Text>
-                    <View style={s.sigRow}>
-                        <View style={s.sigItem}>
-                            <Text style={s.sigLabel}>Signé par</Text>
-                            <Text style={s.sigValue}>{signer.name}</Text>
-                            <View style={s.sigLine} />
-                            <Text style={s.sigLabel}>{signer.role}</Text>
-                        </View>
-                        <View style={s.sigItem}>
-                            <Text style={s.sigLabel}>Date de signature DUERP</Text>
-                            <Text style={s.sigValue}>{formatDate(duerp.signedAt)}</Text>
-                            <View style={s.sigLine} />
-                            <Text style={s.sigLabel}>Référence document</Text>
-                            <Text style={s.sigValue}>{refNum}</Text>
-                        </View>
-                        <View style={s.sigItem}>
-                            <Text style={s.sigLabel}>Prochaine révision</Text>
-                            <Text style={s.sigValue}>
-                                {duerp.nextReviewDate ? formatDate(duerp.nextReviewDate) : "Non définie"}
-                            </Text>
-                            <View style={s.sigLine} />
-                            <Text style={s.sigLabel}>Version DUERP</Text>
-                            <Text style={s.sigValue}>v{duerp.version}.0</Text>
-                        </View>
+                    {/* Section Dates */}
+                    <View style={s.datesBlock}>
+                        <Text style={s.dateLine}><Text style={s.boldDark}>Date de début d&apos;accompagnement :</Text> {startDate}</Text>
+                        <Text style={s.dateLine}><Text style={s.boldDark}>Validité :</Text> Tant que l&apos;abonnement ICPP Conformité est actif</Text>
+                    </View>
+
+                    {/* Phrase légale */}
+                    <Text style={s.faitPourServir}>Fait pour servir et valoir ce que de droit.</Text>
+
+                    {/* Signature */}
+                    <View style={s.signatureContainer}>
+                        <Image src={img("Signature.png")} style={s.signatureImage} />
+                        <Image src={img("Titulaire signature.png")} style={s.titulaireImage} />
                     </View>
                 </View>
 
-                {/* Footer */}
-                <View style={s.footer} fixed>
-                    <Text style={s.footerText}>ICPP – Institut de Conformité et de Prévention Professionnelle</Text>
-                    <Text style={s.footerText}>Document confidentiel — Usage interne et légal uniquement</Text>
-                    <Text style={s.footerText}>Réf. {refNum}</Text>
+                {/* Footer Fixe */}
+                <View style={s.footerBlock} fixed>
+                    <View style={{ flex: 1 }}>
+                        <View style={s.footerColumn}>
+                            <Text style={s.footerLabel}>Téléphone</Text>
+                            <Text style={s.footerValue}>+262 692 45 19 13</Text>
+                        </View>
+                        <View style={s.footerColumn}>
+                            <Text style={s.footerLabel}>E-mail</Text>
+                            <Text style={s.footerValue}>emmanuellekaisse@gmail.com</Text>
+                        </View>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <View style={s.footerColumn}>
+                            <Text style={s.footerLabel}>Site web</Text>
+                            <Text style={s.footerValue}>www.icpp-conformite.fr</Text>
+                        </View>
+                        <View style={s.footerColumn}>
+                            <Text style={s.footerLabel}>Adresse</Text>
+                            <Text style={s.footerValue}>25 rue de Ponthieu, 75008 Paris</Text>
+                        </View>
+                    </View>
                 </View>
             </Page>
         </Document>
